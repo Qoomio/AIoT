@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON Viewer - {{FILE_NAME}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        .header {
+            background: #2d2d30;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #569cd6;
+            font-size: 18px;
+            font-weight: normal;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #007acc;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #005a9e;
+        }
+
+        .btn.secondary {
+            background: #3e3e42;
+        }
+
+        .btn.secondary:hover {
+            background: #4e4e52;
+        }
+
+        .json-container {
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        .json-tree {
+            font-size: 14px;
+        }
+
+        .json-line {
+            display: flex;
+            align-items: flex-start;
+            margin: 2px 0;
+            white-space: nowrap;
+        }
+
+        .json-indent {
+            display: inline-block;
+            width: 20px;
+            flex-shrink: 0;
+        }
+
+        .json-toggle {
+            background: none;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 0;
+            margin: 0 4px 0 0;
+            font-family: inherit;
+            font-size: 12px;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .json-toggle:hover {
+            background: #3e3e42;
+            color: #ffffff;
+        }
+
+        .json-toggle.collapsed::before {
+            content: '▶';
+        }
+
+        .json-toggle.expanded::before {
+            content: '▼';
+        }
+
+        .json-key {
+            color: #9cdcfe;
+            margin-right: 8px;
+        }
+
+        .json-key::after {
+            content: ':';
+            color: #cccccc;
+        }
+
+        .json-value {
+            color: #ce9178;
+        }
+
+        .json-value.string {
+            color: #ce9178;
+        }
+
+        .json-value.string::before,
+        .json-value.string::after {
+            content: '"';
+            color: #ce9178;
+        }
+
+        .json-value.number {
+            color: #b5cea8;
+        }
+
+        .json-value.boolean {
+            color: #569cd6;
+        }
+
+        .json-value.null {
+            color: #569cd6;
+        }
+
+        .json-bracket {
+            color: #cccccc;
+            font-weight: bold;
+        }
+
+        .json-comma {
+            color: #cccccc;
+            margin-left: 2px;
+        }
+
+        .json-collapsed {
+            display: none;
+        }
+
+        .json-summary {
+            color: #6a9955;
+            font-style: italic;
+            margin-left: 8px;
+        }
+
+        .error {
+            color: #f48771;
+            padding: 20px;
+            text-align: center;
+            background: #2d2d30;
+            border-radius: 8px;
+            border: 1px solid #f48771;
+        }
+
+        .loading {
+            color: #d4d4d4;
+            padding: 40px;
+            text-align: center;
+            background: #2d2d30;
+            border-radius: 8px;
+        }
+
+        .stats {
+            font-size: 12px;
+            color: #6a9955;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .json-indent {
+                width: 16px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+</head>
+<body>
+    <div class="header">
+        
+        <div class="controls">
+            <h1>📄 {{FILE_NAME}} <span class="stats" id="stats"></span></h1>
+            <button class="btn" onclick="copyToClipboard()">Copy JSON</button>
+        </div>
+    </div>
+
+    <div class="json-container">
+        <div id="content" class="loading">Loading JSON...</div>
+    </div>
+
+    <script type="module">
+        import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+        let jsonData = null;
+        let expandedState = new Set();
+
+        // Fetch and display JSON
+        fetch('{{JSON_URL}}')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(text => {
+                try {
+                    jsonData = JSON.parse(text);
+                    displayJson(jsonData);
+                    updateStats(jsonData);
+                } catch (parseError) {
+                    throw new Error(`Invalid JSON: ${parseError.message}`);
+                }
+            })
+            .catch(error => {
+                document.getElementById('content').innerHTML = 
+                    `<div class="error">Error loading JSON: ${error.message}</div>`;
+            });
+
+        function displayJson(data, parentPath = '') {
+            const container = document.getElementById('content');
+            container.innerHTML = '';
+            container.className = 'json-tree';
+            
+            const lines = generateJsonLines(data, 0, parentPath);
+            lines.forEach(line => container.appendChild(line));
+        }
+
+        function generateJsonLines(data, depth = 0, path = '', isLast = true) {
+            const lines = [];
+            const indent = '&nbsp;'.repeat(depth * 4);
+
+            if (Array.isArray(data)) {
+                lines.push(createJsonLine(indent, '', '[', depth, path, data.length + ' items'));
+                
+                data.forEach((item, index) => {
+                    const itemPath = `${path}[${index}]`;
+                    const isLastItem = index === data.length - 1;
+                    const itemLines = generateJsonLines(item, depth + 1, itemPath, isLastItem);
+                    lines.push(...itemLines);
+                });
+                
+                lines.push(createJsonLine(indent, '', ']' + (!isLast ? ',' : ''), depth));
+                
+            } else if (data !== null && typeof data === 'object') {
+                const keys = Object.keys(data);
+                lines.push(createJsonLine(indent, '', '{', depth, path, keys.length + ' properties'));
+                
+                keys.forEach((key, index) => {
+                    const keyPath = path ? `${path}.${key}` : key;
+                    const isLastKey = index === keys.length - 1;
+                    const value = data[key];
+                    
+                    if (value !== null && (typeof value === 'object' || Array.isArray(value))) {
+                        lines.push(createJsonLine(
+                            '&nbsp;'.repeat((depth + 1) * 4), 
+                            key, 
+                            '', 
+                            depth + 1, 
+                            keyPath
+                        ));
+                        const valueLines = generateJsonLines(value, depth + 1, keyPath, isLastKey);
+                        lines.push(...valueLines);
+                    } else {
+                        lines.push(createValueLine(
+                            '&nbsp;'.repeat((depth + 1) * 4), 
+                            key, 
+                            value, 
+                            !isLastKey,
+                            depth
+                        ));
+                    }
+                });
+                
+                lines.push(createJsonLine(indent, '', '}' + (!isLast ? ',' : ''), depth));
+                
+            } else {
+                lines.push(createValueLine(indent, '', data, !isLast, depth));
+            }
+
+            return lines;
+        }
+
+        function createJsonLine(indent, key, bracket, depth = 0, path = '', summary = '') {
+            const line = document.createElement('div');
+            line.className = 'json-line';
+            line.style.paddingLeft = `${depth * 20}px`; // 20px per level
+            
+            const canToggle = bracket === '{' || bracket === '[';
+            const toggleButton = canToggle ? 
+                `<button class="json-toggle expanded" onclick="toggleCollapse('${path}', this)"></button>` : 
+                '<span style="width: 16px; display: inline-block;"></span>';
+            
+            const keySpan = key ? `<span class="json-key">${escapeHtml(key)}</span>` : '';
+            const summarySpan = summary ? `<span class="json-summary">&nbsp;&nbsp;// ${summary}</span>` : '';
+            
+            line.innerHTML = `
+                ${toggleButton}
+                ${keySpan}
+                <span class="json-bracket">${bracket}</span>
+                ${summarySpan}
+            `;
+            
+            if (canToggle) {
+                line.setAttribute('data-path', path);
+                line.setAttribute('data-depth', depth);
+                expandedState.add(path);
+            }
+            
+            return line;
+        }
+
+        function createValueLine(indent, key, value, hasComma, depth) {
+            const line = document.createElement('div');
+            line.className = 'json-line';
+            line.style.paddingLeft = `${(depth + 1) * 20}px`; // You'll need to pass depth to this function
+            
+            const keySpan = key ? `<span class="json-key">${escapeHtml(key)}</span>` : '';
+            const valueSpan = formatValue(value);
+            const comma = hasComma ? '<span class="json-comma">,</span>' : '';
+            
+            line.innerHTML = `
+                <span style="width: 16px; display: inline-block;"></span>
+                ${keySpan}
+                ${valueSpan}
+                ${comma}
+            `;
+            
+            return line;
+        }
+
+        function formatValue(value) {
+            if (value === null) {
+                return '<span class="json-value null">null</span>';
+            } else if (typeof value === 'string') {
+                return `<span class="json-value string">${escapeHtml(value)}</span>`;
+            } else if (typeof value === 'number') {
+                return `<span class="json-value number">${value}</span>`;
+            } else if (typeof value === 'boolean') {
+                return `<span class="json-value boolean">${value}</span>`;
+            }
+            return `<span class="json-value">${escapeHtml(String(value))}</span>`;
+        }
+
+        function toggleCollapse(path, button) {
+            const isExpanded = expandedState.has(path);
+            const container = document.getElementById('content');
+            const allLines = Array.from(container.children);
+            
+            if (isExpanded) {
+                expandedState.delete(path);
+                button.className = 'json-toggle collapsed';
+                hideChildren(path, allLines);
+            } else {
+                expandedState.add(path);
+                button.className = 'json-toggle expanded';
+                showChildren(path, allLines);
+            }
+        }
+
+        function hideChildren(parentPath, allLines) {
+            const parentDepth = getLineDepth(parentPath, allLines);
+            let foundParent = false;
+            
+            for (const line of allLines) {
+                if (line.getAttribute('data-path') === parentPath) {
+                    foundParent = true;
+                    continue;
+                }
+                
+                if (foundParent) {
+                    const lineDepth = parseInt(line.getAttribute('data-depth') || '999');
+                    if (lineDepth <= parentDepth) {
+                        break;
+                    }
+                    line.classList.add('json-collapsed');
+                }
+            }
+        }
+
+        function showChildren(parentPath, allLines) {
+            const parentDepth = getLineDepth(parentPath, allLines);
+            let foundParent = false;
+            
+            for (const line of allLines) {
+                if (line.getAttribute('data-path') === parentPath) {
+                    foundParent = true;
+                    continue;
+                }
+                
+                if (foundParent) {
+                    const lineDepth = parseInt(line.getAttribute('data-depth') || '999');
+                    const linePath = line.getAttribute('data-path');
+                    
+                    if (lineDepth <= parentDepth) {
+                        break;
+                    }
+                    
+                    // Only show direct children, check if parent is expanded
+                    if (lineDepth === parentDepth + 1) {
+                        line.classList.remove('json-collapsed');
+                    } else if (linePath && !expandedState.has(getParentPath(linePath, lineDepth - 1))) {
+                        // Keep collapsed if parent is collapsed
+                        continue;
+                    } else {
+                        line.classList.remove('json-collapsed');
+                    }
+                }
+            }
+        }
+
+        function getLineDepth(path, allLines) {
+            for (const line of allLines) {
+                if (line.getAttribute('data-path') === path) {
+                    return parseInt(line.getAttribute('data-depth') || '0');
+                }
+            }
+            return 0;
+        }
+
+        function getParentPath(path, targetDepth) {
+            // Simplified parent path calculation
+            const parts = path.split(/[\.\[\]]+/).filter(p => p);
+            return parts.slice(0, targetDepth).join('.');
+        }
+
+        function copyToClipboard() {
+            if (jsonData) {
+                const jsonString = JSON.stringify(jsonData, null, 2);
+                navigator.clipboard.writeText(jsonString).then(() => {
+                    // Temporary feedback
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    btn.style.background = '#28a745';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 1500);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+            }
+        }
+
+        function updateStats(data) {
+            const stats = document.getElementById('stats');
+            const size = JSON.stringify(data).length;
+            const sizeStr = size > 1024 ? `${(size/1024).toFixed(1)}KB` : `${size}B`;
+            
+            let itemCount = 0;
+            if (Array.isArray(data)) {
+                itemCount = data.length;
+                stats.textContent = `(${itemCount} items, ${sizeStr})`;
+            } else if (typeof data === 'object' && data !== null) {
+                itemCount = Object.keys(data).length;
+                stats.textContent = `(${itemCount} properties, ${sizeStr})`;
+            } else {
+                stats.textContent = `(${sizeStr})`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        initAutoRefresh('{{FILE_PATH}}');
+    </script>
+</body>
+</html>

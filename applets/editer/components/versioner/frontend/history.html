@@ -1,0 +1,109 @@
+<div class="version-history-modal" id="versionHistoryModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <span class="history-icon">🕰️</span>
+                Version History
+            </h2>
+            <div class="modal-file-info">
+                <span class="file-path" id="modalFilePath"></span>
+            </div>
+            <button class="modal-close-btn" id="modalCloseBtn" title="Close (Esc)">×</button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="version-list-container">
+                <div class="version-list-header">
+                    <h3>Versions</h3>
+                    <div class="version-count">
+                        <span id="versionCount">0</span> versions
+                    </div>
+                </div>
+                
+                <div class="version-list-loading" id="versionListLoading">
+                    <div class="loading-spinner"></div>
+                    <span>Loading versions...</span>
+                </div>
+                
+                <div class="version-list-error" id="versionListError" style="display: none;">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message" id="errorMessage"></div>
+                    <button class="retry-btn" id="retryBtn">Retry</button>
+                </div>
+                
+                <div class="version-list-empty" id="versionListEmpty" style="display: none;">
+                    <div class="empty-icon">📄</div>
+                    <div class="empty-message">No versions found</div>
+                    <div class="empty-subtitle">Versions will be created automatically when you save changes to this file.</div>
+                </div>
+                
+                <div class="version-list" id="versionList">
+                    <!-- Version items will be dynamically added here -->
+                </div>
+            </div>
+            
+            <div class="version-preview-container">
+                <div class="version-preview-header">
+                    <h3>Preview</h3>
+                    <div class="preview-actions">
+                        <button class="preview-btn active" id="diffBtn" title="Show differences">Diff</button>
+                        <button class="preview-btn" id="fullBtn" title="Show full content">Full</button>
+                    </div>
+                </div>
+                
+                <div class="version-preview-loading" id="versionPreviewLoading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <span>Loading preview...</span>
+                </div>
+                
+                <div class="version-preview-empty" id="versionPreviewEmpty">
+                    <div class="empty-icon">👁️</div>
+                    <div class="empty-message">Select a version to preview</div>
+                </div>
+                
+                <div class="version-preview-content" id="versionPreviewContent" style="display: none;">
+                    <pre class="preview-code" id="previewCode"></pre>
+                </div>
+                
+                <div class="version-preview-error" id="versionPreviewError" style="display: none;">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message" id="previewErrorMessage"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="footer-info">
+                <span class="selected-version-info" id="selectedVersionInfo" style="display: none;">
+                    Selected: <span id="selectedVersionDate"></span> 
+                    (<span id="selectedVersionSize"></span>)
+                </span>
+            </div>
+            <div class="footer-actions">
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="rollbackBtn" disabled>
+                    <span class="rollback-icon">↶</span>
+                    Rollback to This Version
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Version list item template -->
+<template id="versionItemTemplate">
+    <div class="version-item" data-timestamp="" data-filename="">
+        <div class="version-info">
+            <div class="version-date"></div>
+            <div class="version-details">
+                <span class="version-size"></span>
+                <span class="version-age"></span>
+            </div>
+        </div>
+        <div class="version-actions">
+            <button class="version-preview-btn" title="Preview this version">👁️</button>
+            <button class="version-rollback-btn" title="Rollback to this version">↶</button>
+        </div>
+    </div>
+</template>

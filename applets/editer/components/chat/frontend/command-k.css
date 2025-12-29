@@ -1,0 +1,399 @@
+/**
+ * Command+K Modal CSS
+ * 
+ * Styles for the inline AI assistant modal similar to Cursor's Command+K feature
+ */
+
+.command-k-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    backdrop-filter: blur(4px);
+}
+
+.command-k-overlay.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.command-k-modal {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: commandKSlideIn 0.2s ease-out;
+}
+
+@keyframes commandKSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.command-k-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #3c3c3c;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.command-k-title {
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.command-k-title .icon {
+    font-size: 16px;
+}
+
+.command-k-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: auto;
+    transition: all 0.2s;
+}
+
+.command-k-close:hover {
+    background: #333;
+    color: #fff;
+}
+
+.command-k-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.command-k-input-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid #3c3c3c;
+}
+
+.command-k-context-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #888;
+}
+
+.command-k-context-info .file-icon {
+    font-size: 14px;
+}
+
+.command-k-context-info .context-text {
+    flex: 1;
+}
+
+.command-k-context-info .line-info {
+    background: #333;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.command-k-input-wrapper {
+    position: relative;
+}
+
+.command-k-input {
+    width: 100%;
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.command-k-input:focus {
+    border-color: #007acc;
+    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.command-k-input::placeholder {
+    color: #888;
+}
+
+.command-k-actions {
+    padding: 12px 20px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    background: #252526;
+}
+
+.command-k-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.command-k-btn-primary {
+    background: #007acc;
+    color: #fff;
+}
+
+.command-k-btn-primary:hover:not(:disabled) {
+    background: #005a9e;
+}
+
+.command-k-btn-primary:disabled {
+    background: #444;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.command-k-btn-secondary {
+    background: #3c3c3c;
+    color: #fff;
+}
+
+.command-k-btn-secondary:hover {
+    background: #484848;
+}
+
+.command-k-response-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.command-k-response-header {
+    padding: 12px 20px;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.command-k-response-title {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.command-k-loading {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #333;
+    border-top: 2px solid #007acc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.command-k-response-content {
+    flex: 1;
+    padding: 16px 20px;
+    overflow-y: auto;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.command-k-response-content pre {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+}
+
+.command-k-response-content code {
+    background: #333;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+}
+
+.command-k-response-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.command-k-apply-section {
+    padding: 12px 20px;
+    background: #252526;
+    border-top: 1px solid #3c3c3c;
+    display: none;
+}
+
+.command-k-apply-section.show {
+    display: block;
+}
+
+.command-k-apply-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.command-k-apply-title {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.command-k-diff-preview {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.command-k-diff-line {
+    padding: 2px 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    white-space: pre;
+}
+
+.command-k-diff-line.added {
+    background: rgba(0, 255, 0, 0.1);
+    color: #4caf50;
+}
+
+.command-k-diff-line.removed {
+    background: rgba(255, 0, 0, 0.1);
+    color: #f44336;
+}
+
+.command-k-diff-line.context {
+    color: #888;
+}
+
+.command-k-apply-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.command-k-btn-apply {
+    background: #4caf50;
+    color: #fff;
+}
+
+.command-k-btn-apply:hover:not(:disabled) {
+    background: #45a049;
+}
+
+.command-k-btn-reject {
+    background: #f44336;
+    color: #fff;
+}
+
+.command-k-btn-reject:hover {
+    background: #da190b;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .command-k-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .command-k-header,
+    .command-k-input-section,
+    .command-k-actions,
+    .command-k-response-content,
+    .command-k-apply-section {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+/* Dark theme overrides */
+.vs-dark .command-k-modal {
+    background: #1e1e1e;
+    border-color: #3c3c3c;
+}
+
+.vs-dark .command-k-input {
+    background: #2d2d2d;
+    border-color: #3c3c3c;
+    color: #cccccc;
+}
+
+.vs-dark .command-k-input:focus {
+    border-color: #007acc;
+}
+
+/* Syntax highlighting for code blocks */
+.command-k-response-content .code-block {
+    position: relative;
+}
+
+.command-k-response-content .code-block::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #333;
+    color: #888;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+}

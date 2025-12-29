@@ -1,0 +1,271 @@
+<div id="monaco-settings-modal" class="monaco-settings-modal">
+    <div class="monaco-settings-backdrop"></div>
+    <div class="monaco-settings-content">
+        <div class="monaco-settings-header">
+            <h2>Monaco Editor Settings</h2>
+            <button id="monaco-settings-close" class="monaco-settings-close">&times;</button>
+        </div>
+        
+        <div class="monaco-settings-body">
+            <form id="monaco-settings-form">
+                <!-- Appearance -->
+                <div class="monaco-settings-section">
+                    <h3>Appearance</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="theme">Theme:</label>
+                        <select id="theme" name="theme">
+                            <option value="vs">Light (Visual Studio)</option>
+                            <option value="vs-dark">Dark (Visual Studio)</option>
+                            <option value="hc-black">High Contrast Dark</option>
+                            <option value="hc-light">High Contrast Light</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="fontSize">Font Size:</label>
+                        <input type="range" id="fontSize" name="fontSize" min="8" max="72" step="1">
+                        <span id="fontSize-value">14px</span>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="lineNumbers">Line Numbers:</label>
+                        <select id="lineNumbers" name="lineNumbers">
+                            <option value="on">On</option>
+                            <option value="off">Off</option>
+                            <option value="relative">Relative</option>
+                            <option value="interval">Interval</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="renderWhitespace">Show Whitespace:</label>
+                        <select id="renderWhitespace" name="renderWhitespace">
+                            <option value="none">None</option>
+                            <option value="boundary">Boundary</option>
+                            <option value="selection">Selection</option>
+                            <option value="trailing">Trailing</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="rulers">Rulers (comma separated):</label>
+                        <input type="text" id="rulers" name="rulers" placeholder="80, 120">
+                    </div>
+                </div>
+                
+                <!-- Editor Behavior -->
+                <div class="monaco-settings-section">
+                    <h3>Editor Behavior</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="wordWrap">Word Wrap:</label>
+                        <select id="wordWrap" name="wordWrap">
+                            <option value="off">Off</option>
+                            <option value="on">On</option>
+                            <option value="wordWrapColumn">Word Wrap Column</option>
+                            <option value="bounded">Bounded</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="tabSize">Tab Size:</label>
+                        <input type="range" id="tabSize" name="tabSize" min="1" max="8" step="1">
+                        <span id="tabSize-value">4</span>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="insertSpaces" name="insertSpaces">
+                            Insert Spaces (instead of tabs)
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="detectIndentation" name="detectIndentation">
+                            Auto-detect indentation
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="trimAutoWhitespace" name="trimAutoWhitespace">
+                            Trim auto whitespace
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="autoIndent">Auto Indent:</label>
+                        <select id="autoIndent" name="autoIndent">
+                            <option value="none">None</option>
+                            <option value="keep">Keep</option>
+                            <option value="brackets">Brackets</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="full">Full</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Cursor -->
+                <div class="monaco-settings-section">
+                    <h3>Cursor</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="cursorStyle">Cursor Style:</label>
+                        <select id="cursorStyle" name="cursorStyle">
+                            <option value="line">Line</option>
+                            <option value="block">Block</option>
+                            <option value="underline">Underline</option>
+                            <option value="line-thin">Line Thin</option>
+                            <option value="block-outline">Block Outline</option>
+                            <option value="underline-thin">Underline Thin</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="cursorBlinking">Cursor Blinking:</label>
+                        <select id="cursorBlinking" name="cursorBlinking">
+                            <option value="blink">Blink</option>
+                            <option value="smooth">Smooth</option>
+                            <option value="phase">Phase</option>
+                            <option value="expand">Expand</option>
+                            <option value="solid">Solid</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Features -->
+                <div class="monaco-settings-section">
+                    <h3>Features</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="minimap-enabled" name="minimap.enabled">
+                            Show Minimap
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row minimap-options">
+                        <label for="minimap-scale">Minimap Scale:</label>
+                        <select id="minimap-scale" name="minimap.scale">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="folding" name="folding">
+                            Code Folding
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="showFoldingControls">Show Folding Controls:</label>
+                        <select id="showFoldingControls" name="showFoldingControls">
+                            <option value="never">Never</option>
+                            <option value="mouseover">Mouse Over</option>
+                            <option value="always">Always</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="matchBrackets">Match Brackets:</label>
+                        <select id="matchBrackets" name="matchBrackets">
+                            <option value="never">Never</option>
+                            <option value="near">Near</option>
+                            <option value="always">Always</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="bracketPairColorization" name="bracketPairColorization">
+                            Bracket Pair Colorization
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Suggestions -->
+                <div class="monaco-settings-section">
+                    <h3>IntelliSense</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="quickSuggestions" name="quickSuggestions">
+                            Quick Suggestions
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="suggestOnTriggerCharacters" name="suggestOnTriggerCharacters">
+                            Suggest on Trigger Characters
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="acceptSuggestionOnEnter">Accept Suggestion on Enter:</label>
+                        <select id="acceptSuggestionOnEnter" name="acceptSuggestionOnEnter">
+                            <option value="on">On</option>
+                            <option value="off">Off</option>
+                            <option value="smart">Smart</option>
+                        </select>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label for="wordBasedSuggestions">Word Based Suggestions:</label>
+                        <select id="wordBasedSuggestions" name="wordBasedSuggestions">
+                            <option value="off">Off</option>
+                            <option value="currentDocument">Current Document</option>
+                            <option value="matchingDocuments">Matching Documents</option>
+                            <option value="allDocuments">All Documents</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Performance -->
+                <div class="monaco-settings-section">
+                    <h3>Performance</h3>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="smoothScrolling" name="smoothScrolling">
+                            Smooth Scrolling
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="mouseWheelZoom" name="mouseWheelZoom">
+                            Mouse Wheel Zoom
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="scrollBeyondLastLine" name="scrollBeyondLastLine">
+                            Scroll Beyond Last Line
+                        </label>
+                    </div>
+                    
+                    <div class="monaco-settings-row">
+                        <label>
+                            <input type="checkbox" id="automaticLayout" name="automaticLayout">
+                            Automatic Layout
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="monaco-settings-footer">
+            <button type="button" id="monaco-settings-reset">Reset to Defaults</button>
+            <button type="button" id="monaco-settings-cancel">Cancel</button>
+            <button type="button" id="monaco-settings-save">Save Settings</button>
+        </div>
+    </div>
+</div>

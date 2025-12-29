@@ -1,0 +1,304 @@
+.monaco-settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: none;
+}
+
+.monaco-settings-modal.show {
+    display: block;
+}
+
+.monaco-settings-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.monaco-settings-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    color: #cccccc;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.monaco-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #3c3c3c;
+    background: #252526;
+    border-radius: 8px 8px 0 0;
+}
+
+.monaco-settings-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.monaco-settings-close {
+    background: none;
+    border: none;
+    color: #cccccc;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.monaco-settings-close:hover {
+    background: #3c3c3c;
+    color: #ffffff;
+}
+
+.monaco-settings-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.monaco-settings-section {
+    margin-bottom: 32px;
+}
+
+.monaco-settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.monaco-settings-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    border-bottom: 1px solid #3c3c3c;
+    padding-bottom: 8px;
+}
+
+.monaco-settings-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.monaco-settings-row:last-child {
+    margin-bottom: 0;
+}
+
+.monaco-settings-row label {
+    font-size: 14px;
+    color: #cccccc;
+    min-width: 180px;
+    cursor: pointer;
+}
+
+.monaco-settings-row input[type="checkbox"] + label,
+.monaco-settings-row label:has(input[type="checkbox"]) {
+    min-width: auto;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.monaco-settings-row input[type="checkbox"] {
+    margin: 0;
+}
+
+.monaco-settings-row select,
+.monaco-settings-row input[type="text"] {
+    background: #3c3c3c;
+    border: 1px solid #5c5c5c;
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 120px;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.monaco-settings-row select:focus,
+.monaco-settings-row input[type="text"]:focus {
+    outline: none;
+    border-color: #007acc;
+    background: #454545;
+}
+
+.monaco-settings-row input[type="range"] {
+    flex: 1;
+    margin: 0 8px;
+}
+
+.monaco-settings-row input[type="range"] + span {
+    min-width: 50px;
+    text-align: right;
+    font-size: 14px;
+    color: #cccccc;
+}
+
+.monaco-settings-row input[type="checkbox"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #5c5c5c;
+    border-radius: 3px;
+    background: #3c3c3c;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.monaco-settings-row input[type="checkbox"]:checked {
+    background: #007acc;
+    border-color: #007acc;
+}
+
+.monaco-settings-row input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.minimap-options {
+    margin-left: 20px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.minimap-options.enabled {
+    opacity: 1;
+}
+
+.monaco-settings-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid #3c3c3c;
+    background: #252526;
+    border-radius: 0 0 8px 8px;
+}
+
+.monaco-settings-footer button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    border: 1px solid transparent;
+}
+
+#monaco-settings-reset {
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+#monaco-settings-reset:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+}
+
+#monaco-settings-cancel {
+    background: transparent;
+    color: #cccccc;
+    border-color: #5c5c5c;
+}
+
+#monaco-settings-cancel:hover {
+    background: #3c3c3c;
+    border-color: #6c6c6c;
+}
+
+#monaco-settings-save {
+    background: #007acc;
+    color: white;
+    border-color: #007acc;
+}
+
+#monaco-settings-save:hover {
+    background: #005a9e;
+    border-color: #005a9e;
+}
+
+/* Scrollbar styling for modal */
+.monaco-settings-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.monaco-settings-body::-webkit-scrollbar-track {
+    background: #2d2d30;
+}
+
+.monaco-settings-body::-webkit-scrollbar-thumb {
+    background: #5c5c5c;
+    border-radius: 4px;
+}
+
+.monaco-settings-body::-webkit-scrollbar-thumb:hover {
+    background: #6c6c6c;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .monaco-settings-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .monaco-settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .monaco-settings-row label {
+        min-width: auto;
+    }
+    
+    .monaco-settings-row select,
+    .monaco-settings-row input[type="text"] {
+        width: 100%;
+    }
+    
+    .monaco-settings-footer {
+        flex-direction: column;
+    }
+    
+    .monaco-settings-footer button {
+        width: 100%;
+    }
+}

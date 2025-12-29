@@ -1,0 +1,123 @@
+/**
+ * Context Menu System Styles
+ * 
+ * Centralized styles for all context menus in the editor system
+ */
+
+/* Context Menu Styles */
+.context-menu {
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+    overflow: hidden;
+    position: fixed;
+    z-index: 9999; /* 모달보다 낮게 설정하여 모달이 열려있을 때 context menu가 뒤에 나타나도록 */
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #d4d4d4;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+    background-color: #3e3e42;
+}
+
+.context-menu-item.delete-item:hover {
+    background-color: #5a1e1e;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background-color: #3e3e42;
+    margin: 4px 0;
+}
+
+.context-menu-icon {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}
+
+.context-menu-text {
+    flex: 1;
+}
+
+/* Mobile close button */
+.context-menu-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #cccccc;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+    z-index: 1;
+}
+
+.context-menu-close:hover {
+    background-color: #3e3e42;
+    color: #ffffff;
+}
+
+.context-menu-close:active {
+    background-color: #5a6268;
+    transform: scale(0.95);
+}
+
+/* Message notifications (for feedback) */
+.upload-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 10001;
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+}
+
+.upload-message-info {
+    background-color: #007acc;
+}
+
+.upload-message-success {
+    background-color: #28a745;
+}
+
+.upload-message-error {
+    background-color: #dc3545;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

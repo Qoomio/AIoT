@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mermaid Diagram Viewer - {{FILE_NAME}}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #fff;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            margin-top: 0;
+            color: #444;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .diagram-container {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+        
+        .diagram-container.panning {
+            cursor: grabbing;
+        }
+        
+        .error-message {
+            color: red;
+            background: #fee;
+            border: 1px solid red;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .loading-message {
+            color: #666;
+            font-style: italic;
+        }
+        
+        /* Mermaid diagram styling */
+        .mermaid {
+            text-align: center;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* Override some Mermaid defaults for better appearance */
+        .mermaid svg {
+            max-width: none;
+            height: auto;
+        }
+        
+        /* Zoom controls */
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 6px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        
+        .zoom-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 2px 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.2s ease;
+        }
+        
+        .zoom-btn:hover {
+            background: #f0f0f0;
+            border-color: #999;
+        }
+        
+        .zoom-btn:active {
+            background: #e0e0e0;
+        }
+        
+        .zoom-level {
+            font-size: 11px;
+            text-align: center;
+            margin: 4px 0;
+            color: #666;
+            min-width: 40px;
+        }
+        
+
+    </style>
+    <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+</head>
+<body>
+    <div class="refresh-indicator" id="refreshIndicator">Content updated</div>
+    <div class="container">
+        <h1>📊 {{FILE_NAME}}</h1>
+        
+        <div class="diagram-container" id="diagram-container">
+            <div class="zoom-controls">
+                <div class="zoom-btn" id="zoom-in" title="Zoom In">+</div>
+                <div class="zoom-level" id="zoom-level">100%</div>
+                <div class="zoom-btn" id="zoom-out" title="Zoom Out">−</div>
+                <div class="zoom-btn" id="zoom-reset" title="Reset Zoom">⌂</div>
+            </div>
+            <div id="diagram-content" class="loading-message">Loading Mermaid diagram...</div>
+        </div>
+        
+
+    </div>
+    
+    <!-- Use local Mermaid library - Download mermaid.min.js to /lib/ folder for offline use -->
+    <script src="/view/applets/renderer/frontend/lib/mermaid.min.js"></script>
+    <script type="module">
+        import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+        let mermaidContent = '';
+        
+        // Initialize Mermaid with configuration
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#4CAF50',
+                primaryTextColor: '#333',
+                primaryBorderColor: '#2E7D32',
+                lineColor: '#666',
+                sectionBkgColor: '#f8f9fa',
+                altSectionBkgColor: '#e9ecef',
+                gridColor: '#ddd',
+                secondaryColor: '#f1f8e9',
+                tertiaryColor: '#e8f5e8'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                nodeSpacing: 80,
+                rankSpacing: 80
+            },
+            sequence: {
+                useMaxWidth: true
+            },
+            gantt: {
+                useMaxWidth: true
+            }
+        });
+        
+        function loadMermaidDiagram() {
+            fetch('{{MERMAID_URL}}')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load Mermaid file');
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    mermaidContent = content.trim();
+                    
+                    // Render diagram
+                    renderDiagram();
+                })
+                .catch(error => {
+                    console.error('Mermaid loading error:', error);
+                    showError('Failed to load Mermaid file: ' + error.message);
+                });
+        }
+        
+        function renderDiagram() {
+            const diagramContainer = document.getElementById('diagram-content');
+            
+            try {
+                // Clear previous content
+                diagramContainer.innerHTML = '';
+                
+                // Create a new div for the mermaid diagram
+                const diagramDiv = document.createElement('div');
+                diagramDiv.className = 'mermaid';
+                diagramDiv.textContent = mermaidContent;
+                diagramContainer.appendChild(diagramDiv);
+                
+                // Render the diagram
+                mermaid.run({
+                    nodes: [diagramDiv]
+                }).then(() => {
+                    console.log('Mermaid diagram rendered successfully');
+                }).catch(error => {
+                    console.error('Mermaid rendering error:', error);
+                    showError('Failed to render diagram: ' + error.message);
+                });
+                
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                showError('Failed to render diagram: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('diagram-content').innerHTML = 
+                '<div class="error-message">' +
+                '<h3>Error rendering Mermaid diagram</h3>' +
+                '<p>' + message + '</p>' +
+                '<p>Please check the Mermaid syntax in your diagram.</p>' +
+                '</div>';
+        }
+        
+        // Wait for Mermaid to load, then start rendering
+        function init() {
+            if (typeof mermaid === 'undefined') {
+                setTimeout(init, 100);
+                return;
+            }
+            loadMermaidDiagram();
+        }
+        
+        // Zoom and Pan functionality
+        let currentZoom = 1;
+        let currentPanX = 0;
+        let currentPanY = 0;
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+        let startPanX = 0;
+        let startPanY = 0;
+        
+        function updateTransform() {
+            const mermaidElement = document.querySelector('.mermaid');
+            if (mermaidElement) {
+                mermaidElement.style.transform = `translate(${currentPanX}px, ${currentPanY}px) scale(${currentZoom})`;
+            }
+            document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
+        }
+        
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.2, 5);
+            updateTransform();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom / 1.2, 0.1);
+            updateTransform();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            currentPanX = 0;
+            currentPanY = 0;
+            updateTransform();
+        }
+        
+        function setupZoomControls() {
+            document.getElementById('zoom-in').addEventListener('click', zoomIn);
+            document.getElementById('zoom-out').addEventListener('click', zoomOut);
+            document.getElementById('zoom-reset').addEventListener('click', resetZoom);
+            
+            const container = document.getElementById('diagram-container');
+            
+            // Mouse wheel zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const oldZoom = currentZoom;
+                if (e.deltaY < 0) {
+                    currentZoom = Math.min(currentZoom * 1.1, 5);
+                } else {
+                    currentZoom = Math.max(currentZoom / 1.1, 0.1);
+                }
+                
+                // Zoom towards mouse position
+                const zoomRatio = currentZoom / oldZoom;
+                currentPanX = x - (x - currentPanX) * zoomRatio;
+                currentPanY = y - (y - currentPanY) * zoomRatio;
+                
+                updateTransform();
+            });
+            
+            // Pan functionality
+            container.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.zoom-controls')) return;
+                
+                isPanning = true;
+                container.classList.add('panning');
+                startX = e.clientX;
+                startY = e.clientY;
+                startPanX = currentPanX;
+                startPanY = currentPanY;
+                e.preventDefault();
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+                
+                currentPanX = startPanX + (e.clientX - startX);
+                currentPanY = startPanY + (e.clientY - startY);
+                updateTransform();
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isPanning = false;
+                container.classList.remove('panning');
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                isPanning = false;
+                container.classList.remove('panning');
+            });
+            
+            // Touch support for mobile
+            let lastTouchDistance = 0;
+            
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    // Single touch - pan
+                    isPanning = true;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    startPanX = currentPanX;
+                    startPanY = currentPanY;
+                } else if (e.touches.length === 2) {
+                    // Two touch - zoom
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    lastTouchDistance = Math.sqrt(
+                        Math.pow(touch2.clientX - touch1.clientX, 2) +
+                        Math.pow(touch2.clientY - touch1.clientY, 2)
+                    );
+                }
+                e.preventDefault();
+            });
+            
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isPanning) {
+                    // Pan
+                    currentPanX = startPanX + (e.touches[0].clientX - startX);
+                    currentPanY = startPanY + (e.touches[0].clientY - startY);
+                    updateTransform();
+                } else if (e.touches.length === 2) {
+                    // Zoom
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const distance = Math.sqrt(
+                        Math.pow(touch2.clientX - touch1.clientX, 2) +
+                        Math.pow(touch2.clientY - touch1.clientY, 2)
+                    );
+                    
+                    if (lastTouchDistance > 0) {
+                        const scale = distance / lastTouchDistance;
+                        currentZoom = Math.max(0.1, Math.min(5, currentZoom * scale));
+                        updateTransform();
+                    }
+                    lastTouchDistance = distance;
+                }
+                e.preventDefault();
+            });
+            
+            container.addEventListener('touchend', () => {
+                isPanning = false;
+                lastTouchDistance = 0;
+            });
+        }
+        
+        // Start the initialization process
+        init();
+        initAutoRefresh('{{FILE_PATH}}', loadMermaidDiagram);
+        setupZoomControls();
+    </script>
+</body>
+</html>

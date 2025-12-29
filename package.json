@@ -1,0 +1,33 @@
+{
+  "name": "qoom-aiot-editor",
+  "description": "Qoom AIOT Editor",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --watch server.js"
+  },
+  "keywords": [
+    "nodejs",
+    "server"
+  ],
+  "author": "Qoom",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.15.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "archiver": "^7.0.1",
+    "chokidar": "^4.0.3",
+    "dotenv": "^16.3.1",
+    "form-data": "^4.0.4",
+    "monaco-editor": "^0.52.2",
+    "node-pty": "^1.0.0",
+    "stripe": "^14.21.0",
+    "ws": "^8.18.3"
+  },
+  "version": "1.0.0"
+}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Video Viewer</title>
+        <style>
+            body {
+                margin: 2vh 2vw;
+                padding: 0;
+                height: 98vh;
+                width: 98vw;
+                background-color: #fff;
+                overflow: hidden;
+                
+            }
+            pre {
+                max-width: 100%;
+                max-height: 100%;
+            }
+            
+        </style>
+        <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+    </head>
+    <body>
+        <pre><xmp>{{CONTENTS}}</xmp></pre>
+        <script type="module">
+            import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+            initAutoRefresh('{{FILE_PATH}}');
+        </script>
+    </body>
+</html>

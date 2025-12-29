@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/view/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/view/favicon.png">
+    <title>Project Creator - Qoom2</title>
+    <link rel="stylesheet" href="/view/applets/projecter/frontend/projects.css">
+    <script type="module" src="/view/applets/projecter/frontend/projects.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Project Creator</h1>
+            <p>Create new projects in Python, Node.js, Web, C, or Curriculum with starter templates</p>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="form-section">
+            <h2 style="margin-bottom: 20px;">Select Programming Language</h2>
+            <div class="language-grid">
+                <div class="language-card" data-language="python">
+                    <div class="language-icon">🐍</div>
+                    <h3>Python</h3>
+                    <p>Create a Python project with main.py and requirements.txt</p>
+                </div>
+                <div class="language-card" data-language="nodejs">
+                    <div class="language-icon">🟢</div>
+                    <h3>Node.js</h3>
+                    <p>Create a Node.js project with package.json and index.js</p>
+                </div>
+                <div class="language-card" data-language="web">
+                    <div class="language-icon">🌐</div>
+                    <h3>Web Project</h3>
+                    <p>Create a full-stack web project with HTML, CSS, JS, and Node.js server</p>
+                </div>
+                <div class="language-card" data-language="c">
+                    <div class="language-icon">⚡</div>
+                    <h3>C</h3>
+                    <p>Create a C project with main.c and Makefile</p>
+                </div>
+                <div class="language-card" data-language="curriculum">
+                    <div class="language-icon">📚</div>
+                    <h3>Curriculum</h3>
+                    <p>Create an educational curriculum with lessons, challenges, and homework structure</p>
+                </div>
+                <div class="language-card" data-language="aiot">
+                    <div class="language-icon">🤖</div>
+                    <h3>AIoT</h3>
+                    <p>Create an AIoT project with Python, camera, and AI integration</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="projectName">Project Name</label>
+                <input type="text" id="projectName" placeholder="Enter project name (letters, numbers, _ and - only)" pattern="[a-zA-Z0-9_\-]+" required>
+            </div>
+
+            <button id="createBtn" class="btn btn-full" disabled>Create Project</button>
+        </div>
+
+        <div class="projects-section">
+            <h2>Existing Projects</h2>
+            <div id="projectsList" class="projects-list">
+                <!-- Projects will be loaded here -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>

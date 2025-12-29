@@ -1,0 +1,6 @@
+{
+  "name": "{{FILE_NAME}}",
+  "version": "1.0.0",
+  "description": "",
+  "created": "{{DATE}}"
+}

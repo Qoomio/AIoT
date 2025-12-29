@@ -1,0 +1,90 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+.admin-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-header h1 {
+    color: #007acc;
+    font-size: 32px;
+}
+
+.applets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.applet-card {
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 8px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.applet-card:hover {
+    background-color: #323233;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.2);
+}
+
+.applet-title {
+    color: #d4d4d4;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.no-applets {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+    font-style: italic;
+    font-size: 16px;
+}
+
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+    font-style: italic;
+    font-size: 16px;
+}
+
+.error {
+    text-align: center;
+    padding: 60px 20px;
+    color: #e74c3c;
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    .applets-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-container {
+        padding: 20px 15px;
+    }
+}

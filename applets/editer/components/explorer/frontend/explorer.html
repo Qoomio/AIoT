@@ -1,0 +1,177 @@
+<div class="file-explorer">
+  <div class="explorer-header">
+    <h3 class="explorer-title">Explorer</h3>
+    <div class="explorer-actions">
+      <button class="explorer-search-btn" id="explorer-search-btn" title="Search in Explorer">🔍</button>
+      <button class="new-file-btn explorer-tab-only" data-tab="explorer" title="New File">📄</button>
+      <button class="new-folder-btn explorer-tab-only" data-tab="explorer" title="New Folder">📁</button>
+      <button class="refresh-btn explorer-tab-only" data-tab="explorer" title="Refresh">🔄</button>
+    </div>
+  </div>
+
+  <!-- Explorer View -->
+  <div class="explorer-content active" id="explorer-view">
+    <div class="file-tree-container" id="file-tree-container">
+      <ul class="file-tree" id="file-tree">
+        <!-- File tree will be dynamically populated -->
+      </ul>
+    </div>
+  </div>
+
+  <!-- Search View -->
+  <div class="explorer-search-content" id="explorer-search-view">
+    <div class="search-tab-container">
+      <div class="search-form">
+        <div class="search-input-group">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search text..."
+          />
+          <button
+            class="search-options-btn"
+            title="Search Options"
+          >⚙️</button>
+        </div>
+
+        <div class="search-input-group">
+          <input
+            type="text"
+            class="replace-input"
+            placeholder="Replace with..."
+          />
+        </div>
+
+        <div class="search-options">
+          <label class="search-option">
+            <input type="checkbox" class="case-sensitive" />
+            Case sensitive
+          </label>
+          <label class="search-option">
+            <input type="checkbox" class="whole-word" />
+            Whole word
+          </label>
+          <label class="search-option">
+            <input type="checkbox" class="regex" />
+            Regular expression
+          </label>
+          <div class="search-filter-group">
+            <label for="file-filter">Files to include:</label>
+            <input
+              type="text"
+              id="file-filter"
+              class="file-filter"
+              placeholder="*.js, *.html, *.css"
+            />
+          </div>
+          <div class="search-filter-group">
+            <label for="exclude-filter">Files to exclude:</label>
+            <input
+              type="text"
+              id="exclude-filter"
+              class="exclude-filter"
+              placeholder="node_modules, .git"
+            />
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button class="search-btn">Search</button>
+          <button class="replace-btn" disabled>Replace</button>
+          <button class="replace-all-btn" disabled>Replace All</button>
+        </div>
+      </div>
+
+      <div class="search-results">
+        <div class="search-status">Enter search term to begin</div>
+        <div class="results-list">
+          <!-- Search results will be populated here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div id="create-file-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+    <div class="modal-header">
+        <h3>Create New File</h3>
+        <span id="create-file-close" class="modal-close">&times;</span>
+    </div>
+    <div class="modal-body">
+        <div class="form-group">
+        <label for="file-name">File Name:</label>
+        <input
+            type="text"
+            id="file-name"
+            class="form-input"
+            placeholder="Enter file name (e.g., script.js, index.html)"
+        />
+        </div>
+        <div class="form-group">
+        <label for="file-template">Template (optional):</label>
+        <select id="file-template" class="form-select">
+          <option value="">No template</option>
+          <option value="html">HTML Template</option>
+          <option value="css">CSS Template</option>
+          <option value="javascript">JavaScript Template</option>
+          <option value="json">JSON Template</option>
+          <option value="markdown">Markdown Template</option>
+          <option value="node-module">Node.js Module Template</option>
+          <option value="test">Test File Template</option>
+        </select>
+        </div>
+        <div class="form-group">
+        <label for="file-content">Initial Content:</label>
+        <textarea
+            id="file-content"
+            class="form-textarea"
+            rows="6"
+            placeholder="Enter initial content (optional)"
+        ></textarea>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button id="create-file-cancel" class="btn btn-secondary">
+        Cancel
+        </button>
+        <button id="create-file-submit" class="btn btn-primary">
+        Create File
+        </button>
+    </div>
+    </div>
+</div>
+
+
+<div id="create-folder-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+    <div class="modal-header">
+        <h3>Create New Folder</h3>
+        <span id="create-folder-close" class="modal-close">&times;</span>
+    </div>
+    <div class="modal-body">
+        <div class="form-group">
+        <label for="folder-name">Folder Name:</label>
+        <input
+            type="text"
+            id="folder-name"
+            class="form-input"
+            placeholder="Enter folder name"
+        />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button id="create-folder-cancel" class="btn btn-secondary">
+        Cancel
+        </button>
+        <button id="create-folder-submit" class="btn btn-primary">
+        Create Folder
+        </button>
+    </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input elements for upload -->
+  <input type="file" id="file-upload-input" multiple style="display: none;">
+  <input type="file" id="folder-upload-input" webkitdirectory directory style="display: none;">
+
+</div>

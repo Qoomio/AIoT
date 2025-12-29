@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Editer</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-eediterquiv="X-UA-Compatible" content="ie=edge">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta name="apple-mobile-web-app-title" content="Editer">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="icon" type="image/png" href="/view/favicon.png">
+        <link rel="shortcut icon" type="image/png" href="/view/favicon.png">
+
+        <link rel="stylesheet" href="/view/applets/editer/frontend/editer.css">
+        <!-- Monaco Editor CSS 추가 -->
+        <link rel="stylesheet" href="/view/applets/editer/dist/monaco-editor.css">
+        <!-- 추가 CSS 파일들 -->
+        <link rel="stylesheet" href="/view/applets/editer/components/editorLayout/frontend/editors.css">
+        <link rel="stylesheet" href="/view/applets/editer/components/explorer/frontend/explorer.css">
+        <link rel="stylesheet" href="/view/applets/editer/components/notifier/frontend/notify.css">
+        <link rel="stylesheet" href="/view/applets/editer/components/previewer/frontend/previewer.css">
+        <!-- Vite 번들 사용 -->
+        <script type="module" src="/view/applets/editer/dist/editer.bundle.js"></script>
+    </head>
+    <body>
+        <main>
+            <nav class="controls"></nav>
+            <aside class="explorer"></aside>
+            <div class="resize-handle left-resize"></div>
+            <section class="editors"></section> 
+            <div class="resize-handle right-resize"></div>
+            <aside class="widgets-preview"></aside>
+            <div class="chat-resize"></div>
+            <aside class="widgets-chat"></aside>
+        </main>
+        <div class="context"></div>
+        <footer class="editor-footer"></footer>
+    </body>
+</html>

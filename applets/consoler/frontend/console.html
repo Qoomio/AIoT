@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/view/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/view/favicon.png">
+    <title>Console Monitor</title>
+    <link rel="stylesheet" href="/view/applets/consoler/frontend/console.css">
+    <script type="module" src="/view/applets/consoler/frontend/console.js"></script>
+</head>
+<body>
+    <div class="console-container">
+        <div class="console-header">
+            <div class="console-title">🔍 Console Monitor</div>
+            <div class="console-controls">
+                <div class="filter-controls">
+                    <select class="level-filter" id="levelFilter">
+                        <option value="all">All Levels</option>
+                        <option value="log">Log</option>
+                        <option value="info">Info</option>
+                        <option value="warn">Warn</option>
+                        <option value="error">Error</option>
+                        <option value="debug">Debug</option>
+                    </select>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search logs...">
+                </div>
+                <div class="console-stats" id="consoleStats">
+                    <span id="totalLogs">0 logs</span>
+                    <span id="errorCount">0 errors</span>
+                    <span id="connectionStatus" class="connection-status disconnected">Disconnected</span>
+                </div>
+                <button class="btn" id="exportBtn">Export</button>
+                <button class="btn btn-danger" id="clearBtn">Clear</button>
+            </div>
+        </div>
+        <div class="console-body" id="consoleBody">
+            <div class="no-logs">No logs to display. Console output will appear here in real-time.</div>
+        </div>
+        <div class="auto-scroll-control active" id="autoScrollControl">Auto-scroll: ON</div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<div class="search-tab-container">
+    <div class="search-form">
+        <div class="search-input-group">
+            <input
+                type="text"
+                class="search-input"
+                placeholder="Search text..."
+            />
+            <button
+                class="search-options-btn"
+                title="Search Options"
+            >⚙️</button>
+        </div>
+
+        <div class="search-input-group">
+            <input
+                type="text"
+                class="replace-input"
+                placeholder="Replace with..."
+            />
+        </div>
+
+        <div class="search-options">
+            <label class="search-option">
+                <input type="checkbox" class="case-sensitive" />
+                Case sensitive
+            </label>
+            <label class="search-option">
+                <input type="checkbox" class="whole-word" />
+                Whole word
+            </label>
+            <label class="search-option">
+                <input type="checkbox" class="regex" />
+                Regular expression
+            </label>
+            <div class="search-filter-group">
+                <label for="file-filter">Files to include:</label>
+                <input
+                    type="text"
+                    class="file-filter"
+                    placeholder="*.js, *.html, *.css"
+                />
+            </div>
+            <div class="search-filter-group">
+                <label for="exclude-filter">Files to exclude:</label>
+                <input
+                    type="text"
+                    class="exclude-filter"
+                    placeholder="node_modules, .git"
+                />
+            </div>
+        </div>
+
+        <div class="search-actions">
+            <button class="search-btn">Search</button>
+            <button class="replace-btn" disabled>Replace</button>
+            <button class="replace-all-btn" disabled>Replace All</button>
+        </div>
+    </div>
+
+    <div class="search-results">
+        <div class="search-status">Enter search term to begin</div>
+        <div class="results-list">
+            <!-- Search results will be populated here -->
+        </div>
+    </div>
+</div>
+

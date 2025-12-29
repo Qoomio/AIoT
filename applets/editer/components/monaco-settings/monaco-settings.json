@@ -1,0 +1,31 @@
+{
+  "theme": "vs-dark",
+  "fontSize": 14,
+  "lineNumbers": "on",
+  "minimap": {
+    "enabled": true,
+    "scale": 1
+  },
+  "wordWrap": "on",
+  "tabSize": 4,
+  "insertSpaces": false,
+  "autoIndent": "advanced",
+  "scrollBeyondLastLine": false,
+  "cursorBlinking": "blink",
+  "cursorStyle": "line",
+  "renderWhitespace": "all",
+  "matchBrackets": "always",
+  "folding": true,
+  "showFoldingControls": "always",
+  "automaticLayout": true,
+  "detectIndentation": true,
+  "trimAutoWhitespace": true,
+  "wordBasedSuggestions": "allDocuments",
+  "quickSuggestions": true,
+  "suggestOnTriggerCharacters": true,
+  "acceptSuggestionOnEnter": "on",
+  "rulers": [],
+  "bracketPairColorization": true,
+  "smoothScrolling": false,
+  "mouseWheelZoom": false
+}

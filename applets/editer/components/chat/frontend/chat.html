@@ -1,0 +1,69 @@
+<div class="chat-container">
+    <div class="chat-header">
+        <h3>Qoom Chat</h3>
+        <div class="chat-mode-switch">
+            <label class="mode-toggle">
+                <input type="checkbox" id="starterModeToggle">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Starter Mode</span>
+            </label>
+        </div>
+        <div class="chat-actions">
+            <button class="clear-chat-btn" title="Clear Chat" id="clearChatBtn">🗑️</button>
+        </div>
+    </div>
+    
+    <div class="chat-content">
+        <div class="chat-window" id="chatWindow">
+            <div class="message bot">Hello! I'm the Qoom development assistant. How can I help you?</div>
+        </div>
+        
+        <div class="input-container">
+            <div class="agent-selector">
+                <select id="agentSelect" class="agent-dropdown">
+                    <option value="qoom">🤖 Qoom Agent</option>
+                </select>
+                <button id="addTokenBtn" class="add-token-btn">+ Enter your own token to add agent</button>
+            </div>
+            
+            <form class="input-area" id="chatForm" autocomplete="off">
+                <div class="input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Type your message..." />
+                    <button class="file-select-btn"  title="Select file for context" id="fileSelectBtn">📁</button>
+                    <button type="submit" id="sendButton">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div id="addAgentModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Your Own Agent</h3>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="agentType">Choose Type*</label>
+                <div class="agent-type-buttons">
+                    <button type="button" class="agent-type-btn" data-type="qoom">Qoom LLM</button>
+                    <button type="button" class="agent-type-btn" data-type="chatgpt">ChatGPT</button>
+                    <button type="button" class="agent-type-btn" data-type="claude">Claude</button>
+                    <button type="button" class="agent-type-btn" data-type="gemini">Gemini</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="tokenInput">Token*</label>
+                <input type="text" id="tokenInput" placeholder="Enter your API token..." />
+                <small style="color: #8a8a8a; font-size: 11px; margin-top: 4px; display: block;">Qoom LLM does not require a token</small>
+            </div>
+            <div id="modalError" class="modal-error" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="cancelModal">Cancel</button>
+            <button type="button" class="btn-primary" id="completeModal">Complete</button>
+        </div>
+    </div>
+</div>

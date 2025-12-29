@@ -1,0 +1,29 @@
+# AIoT Python Dependencies
+# Core computer vision library
+opencv-python>=4.8.0
+
+# Scientific computing
+numpy>=1.24.0
+
+# Additional useful libraries for AIoT projects
+# Uncomment the ones you need:
+
+# Machine Learning
+# scikit-learn>=1.3.0
+# tensorflow>=2.13.0
+# torch>=2.0.0
+
+# Image Processing
+# pillow>=10.0.0
+# matplotlib>=3.7.0
+
+# IoT and Communication
+# paho-mqtt>=1.6.1
+# requests>=2.31.0
+
+# Data Analysis
+# pandas>=2.0.0
+
+# Real-time processing
+# threading
+# multiprocessing 

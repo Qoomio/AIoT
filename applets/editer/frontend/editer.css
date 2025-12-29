@@ -1,0 +1,305 @@
+/* Base styles - Dark theme to match main application */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1e1e1e; /* Dark background instead of #f0f0f0 */
+    color: #d4d4d4; /* Light text */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navigation header styling */
+body > header {
+    width: 100%;
+    background-color: #2d2d30; /* VS Code header color instead of #000 */
+    color: #d4d4d4;
+    border-bottom: 1px solid #3e3e42;
+    height: 32px;
+}
+
+/* Main layout grid */
+body > main {
+    display: grid;
+    width: 100%;
+    height: calc(100vh - 38px);
+    flex: 1;
+    grid-template-areas: 
+        "controls controls controls controls controls controls controls" 
+        "explorer left-resize editors right-resize widgets-preview chat-resize widgets-chat";
+    grid-template-columns: 250px 4px auto 4px 250px 4px 250px;
+    grid-template-rows: 75px auto;
+    background-color: #1e1e1e;
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+    body {
+        overflow: hidden !important;
+    }
+    
+    body > main {
+        height: 100vh !important;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        grid-template-areas: "editors";
+        grid-template-columns: 100%;
+        grid-template-rows: 100%;
+    }
+    
+    body > main > nav.controls {
+        display: none; /* Hide from grid, shown as fixed at bottom */
+    }
+    
+    /* Editors takes full screen */
+    body > main > section.editors {
+        width: 100vw;
+        height: calc(100vh - 40px);
+        max-height: calc(100vh - 40px);
+        grid-area: editors;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    
+    /* Hide resize handles */
+    body > main > .left-resize,
+    body > main > .right-resize,
+    body > main > .chat-resize {
+        display: none !important;
+    }
+    
+    /* Explorer panel - overlay from left */
+    body > main > aside.explorer {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100vw !important;
+        height: calc(100vh - 40px);
+        bottom: 40px;
+        z-index: 997;
+        display: flex !important;
+        flex-direction: column;
+        background-color: #252526;
+        border-right: 1px solid #3e3e42;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+    
+    /* Show explorer when visible */
+    body > main > aside.explorer[style*="display: block"],
+    body > main > aside.explorer:not([style*="display"]) {
+        transform: translateX(0);
+    }
+    
+    /* Preview panel - overlay from right */
+    body > main > aside.widgets-preview {
+        position: fixed !important;
+        top: 0;
+        right: 0;
+        left: 0;
+        width: 100vw !important;
+        height: calc(100vh - 40px);
+        bottom: 40px;
+        z-index: 997;
+        display: flex !important;
+        flex-direction: column;
+        background-color: #252526;
+        border-left: 1px solid #3e3e42;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+    
+    /* Show preview when visible */
+    body > main > aside.widgets-preview[style*="display: block"],
+    body > main > aside.widgets-preview:not([style*="display"]) {
+        transform: translateX(0);
+    }
+    
+    /* When hidden, keep it hidden */
+    body > main > aside.explorer[style*="display: none"],
+    body > main > aside.widgets-preview[style*="display: none"] {
+        display: none !important;
+    }
+    
+    /* Chat panel - hide on mobile */
+    body > main > aside.widgets-chat {
+        display: none !important;
+    }
+}
+
+/* Smaller mobile screens */
+@media (max-width: 480px) {
+    body > main > section.editors {
+        height: calc(100vh - 36px);
+        max-height: calc(100vh - 36px);
+    }
+    
+    /* Explorer and Preview full screen on small screens */
+    body > main > aside.explorer,
+    body > main > aside.widgets-preview {
+        height: calc(100vh - 36px);
+        bottom: 36px;
+    }
+}
+
+/* Controls/toolbar area */
+body > main > nav.controls {
+    grid-area: controls;
+    background-color: #2d2d30; /* Match header */
+    color: #d4d4d4;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+}
+
+/* File explorer panel */
+body > main > aside.explorer {
+    grid-area: explorer;
+    background-color: #252526; /* VS Code sidebar color */
+    color: #d4d4d4;
+    border-right: 1px solid #3e3e42;
+    overflow: hidden;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+body > main > aside.explorer > * {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height:100%;
+}
+
+/* Left resize handle */
+body > main > .left-resize {
+    grid-area: left-resize;
+    background-color: #3e3e42; /* Subtle gray instead of blue */
+    cursor: col-resize;
+    transition: background-color 0.2s ease;
+}
+
+body > main > .left-resize:hover {
+    background-color: #007acc; /* Blue on hover */
+}
+
+/* Editor area */
+body > main > section.editors {
+    grid-area: editors;
+    background-color: #1e1e1e; /* Dark editor background */
+    color: #d4d4d4;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Editor footer */
+.editor-footer {
+    height: 6px;
+    background-color: #252526;
+    padding: 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    min-height: 6px;
+    border-top: 1px solid #3e3e42;
+}
+
+/* Right resize handle */
+body > main > .right-resize {
+    grid-area: right-resize;
+    background-color: #3e3e42; /* Match left resize */
+    cursor: col-resize;
+    transition: background-color 0.2s ease;
+    transition: all 0.3s ease;
+}
+
+body > main > .right-resize:hover {
+    background-color: #007acc;
+}
+
+body > main > .chat-resize {
+    grid-area: chat-resize;
+    width: 4px;
+    background-color: #3e3e42;
+    cursor: col-resize;
+    position: relative;
+    transition: background-color 0.2s ease;
+    min-height: 100%;
+    flex-shrink: 0;
+}
+
+body > main > .chat-resize:hover {
+    background-color: #007acc;
+}
+
+body > main > .chat-resize:active {
+    background-color: #1177bb;
+}
+
+/* Widgets/preview panel */
+body > main > aside.widgets-preview {
+    grid-area: widgets-preview;
+    background-color: #252526; /* Match explorer */
+    color: #d4d4d4;
+    border-left: 1px solid #3e3e42;
+    overflow: hidden;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+/* Widgets/chat panel */
+body > main > aside.widgets-chat {
+    grid-area: widgets-chat;
+    background-color: #252526; /* Match explorer */
+    color: #d4d4d4;
+    border-left: 1px solid #3e3e42;
+    overflow: hidden;
+    display: block;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+body > main > aside.widgets-preview[style*="display: none"] {
+    border-left: none;
+}
+
+body > main > aside.widgets-chat[style*="display: none"] {
+    border-left: none;
+}
+
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3e3e42;
+    border-radius: 6px;
+    border: 2px solid #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4e4e52;
+}
+
+::-webkit-scrollbar-corner {
+    background: #1e1e1e;
+}

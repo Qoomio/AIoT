@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <title>HTML Viewer</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+            iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        </style>
+        <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+    </head>
+    <body>
+        <iframe src="/view/{{FILE_PATH}}" width="100%" height="100%"></iframe>
+        <script type="module">
+            import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+            initAutoRefresh('{{FILE_PATH}}');
+        </script>
+    </body>
+</html>

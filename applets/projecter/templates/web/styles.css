@@ -1,0 +1,223 @@
+/* Modern CSS for Web Project */
+
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2c3e50;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    --light-gray: #ecf0f1;
+    --dark-gray: #34495e;
+    --white: #ffffff;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--secondary-color);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: var(--white);
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--white);
+    border-radius: 10px;
+    margin: -20px -20px 40px -20px;
+    padding: 40px 20px;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+header p {
+    font-size: 1.2em;
+    opacity: 0.9;
+}
+
+main {
+    display: grid;
+    gap: 30px;
+}
+
+section {
+    background: var(--light-gray);
+    padding: 25px;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+}
+
+section h2 {
+    color: var(--secondary-color);
+    margin-bottom: 15px;
+    font-size: 1.8em;
+}
+
+section h3 {
+    color: var(--dark-gray);
+    margin: 20px 0 10px 0;
+}
+
+ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+ul li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+}
+
+ul li:before {
+    content: "✓";
+    color: var(--success-color);
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+.demo-box {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin: 15px 0;
+}
+
+.demo-box input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    transition: border-color 0.3s ease;
+}
+
+.demo-box input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+button {
+    background: var(--primary-color);
+    color: var(--white);
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 5px;
+}
+
+button:hover {
+    background: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+#greeting {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--success-color);
+    color: var(--white);
+    border-radius: 6px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.api-demo {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-top: 20px;
+}
+
+#apiResult {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    display: none;
+}
+
+#apiResult.success {
+    border-color: var(--success-color);
+    background: #d4edda;
+    color: #155724;
+}
+
+#apiResult.error {
+    border-color: var(--danger-color);
+    background: #f8d7da;
+    color: #721c24;
+}
+
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    background: var(--light-gray);
+    border-radius: 10px;
+    color: var(--dark-gray);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2em;
+    }
+    
+    section {
+        padding: 20px;
+    }
+    
+    button {
+        width: 100%;
+        margin: 5px 0;
+    }
+}

@@ -1,0 +1,89 @@
+<!-- Command+K Modal HTML Template -->
+<div class="command-k-overlay" id="commandKOverlay">
+    <div class="command-k-modal" id="commandKModal">
+        <!-- Header -->
+        <div class="command-k-header">
+            <h3 class="command-k-title">
+                <span class="icon">🤖</span>
+                Qoom AI Assistant
+            </h3>
+            <button class="command-k-close" id="commandKClose" title="Close (Esc)">×</button>
+        </div>
+
+        <!-- Content -->
+        <div class="command-k-content">
+            <!-- Input Section -->
+            <div class="command-k-input-section">
+                <!-- Context Info -->
+                <div class="command-k-context-info" id="commandKContextInfo">
+                    <span class="file-icon">📄</span>
+                    <span class="context-text" id="commandKContextText">No file selected</span>
+                    <span class="line-info" id="commandKLineInfo" style="display: none;">Line 0</span>
+                </div>
+
+                <!-- Input -->
+                <div class="command-k-input-wrapper">
+                    <textarea 
+                        class="command-k-input" 
+                        id="commandKInput" 
+                        placeholder="What would you like me to help you with? (e.g., 'Add error handling to this function', 'Write unit tests', 'Optimize this code')"
+                        rows="3"
+                    ></textarea>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="command-k-actions">
+                <button class="command-k-btn command-k-btn-secondary" id="commandKCancel">
+                    Cancel
+                </button>
+                <button class="command-k-btn command-k-btn-primary" id="commandKSend" disabled>
+                    <span class="btn-icon">✨</span>
+                    Generate
+                </button>
+            </div>
+
+            <!-- Response Section -->
+            <div class="command-k-response-section" id="commandKResponseSection" style="display: none;">
+                <div class="command-k-response-header">
+                    <h4 class="command-k-response-title" id="commandKResponseTitle">
+                        <span class="icon">💭</span>
+                        AI Response
+                    </h4>
+                </div>
+                <div class="command-k-response-content" id="commandKResponseContent">
+                    <!-- AI response will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Apply Section -->
+            <div class="command-k-apply-section" id="commandKApplySection">
+                <div class="command-k-apply-header">
+                    <h4 class="command-k-apply-title">
+                        <span class="icon">🔄</span>
+                        Apply Changes
+                    </h4>
+                </div>
+                
+                <div class="command-k-diff-preview" id="commandKDiffPreview">
+                    <!-- Diff preview will be shown here -->
+                </div>
+                
+                <div class="command-k-apply-actions">
+                    <button class="command-k-btn command-k-btn-apply" id="commandKApply">
+                        <span class="btn-icon">✅</span>
+                        Apply
+                    </button>
+                    <button class="command-k-btn command-k-btn-reject" id="commandKReject">
+                        <span class="btn-icon">❌</span>
+                        Reject
+                    </button>
+                    <button class="command-k-btn command-k-btn-secondary" id="commandKAskMore">
+                        <span class="btn-icon">💬</span>
+                        Ask for Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Documentation - {{FILE_NAME}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fafafa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .api-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .api-title {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .api-description {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .api-meta {
+            background: white;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .routes-container {
+            margin: 20px;
+        }
+
+        .route-card {
+            background: white;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .route-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .route-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid #667eea;
+        }
+
+        .route-method {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9em;
+            color: white;
+            margin-right: 15px;
+        }
+
+        .method-get { background: #61affe; }
+        .method-post { background: #49cc90; }
+        .method-put { background: #fca130; }
+        .method-delete { background: #f93e3e; }
+        .method-patch { background: #50e3c2; }
+
+        .route-path {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .route-expand {
+            font-size: 1.2em;
+            color: #666;
+            transition: transform 0.3s ease;
+        }
+
+        .route-expand.expanded {
+            transform: rotate(180deg);
+        }
+
+        .route-details {
+            padding: 0 20px 20px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+
+        .route-details.expanded {
+            display: block;
+        }
+
+        .route-section {
+            margin-bottom: 20px;
+        }
+
+        .route-section h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+
+        .try-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .try-button:hover {
+            background: #5a6fd8;
+        }
+
+        .try-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .try-section.active {
+            display: block;
+        }
+
+        .param-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .response-area {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+</head>
+<body>
+    <div class="api-header">
+        <h1 class="api-title">📚 API Documentation</h1>
+        <p class="api-description">Interactive API documentation for {{FILE_NAME}}</p>
+    </div>
+
+    <div id="loading" class="loading">
+        🔄 Loading API documentation...
+    </div>
+
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div id="content" style="display: none;">
+        <div class="api-meta">
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <span class="meta-label">API Name</span>
+                    <span class="meta-value" id="api-name">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Version</span>
+                    <span class="meta-value" id="api-version">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Base Path</span>
+                    <span class="meta-value" id="api-prefix">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Total Routes</span>
+                    <span class="meta-value" id="route-count">-</span>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="meta-label">Description</span>
+                <p class="meta-value" id="api-description-text">-</p>
+            </div>
+        </div>
+
+        <div class="routes-container" id="routes-container">
+            <!-- Routes will be populated here -->
+        </div>
+    </div>
+
+    <script type="module">
+        import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+        let apiData = null;
+        let baseUrl = '';
+
+        // Fetch and parse the API file
+        fetch('{{API_URL}}')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(text => {
+                console.log('API file loaded, parsing...');
+                parseApiFile(text);
+            })
+            .catch(error => {
+                console.error('Error loading API file:', error);
+                showError('Error loading API file: ' + error.message);
+            });
+
+        function parseApiFile(text) {
+            try {
+                // Extract the module.exports object
+                apiData = extractApiData(text);
+                console.log('Parsed API data:', apiData);
+                
+                if (!apiData || !apiData.routes) {
+                    throw new Error('Invalid API file format - no routes found');
+                }
+
+                renderApiDocumentation(apiData);
+                
+            } catch (error) {
+                console.error('Error parsing API file:', error);
+                showError('Error parsing API file: ' + error.message);
+            }
+        }
+
+        function extractApiData(text) {
+            // Simple parser to extract API data from the JavaScript file
+            // This is a basic implementation - could be made more robust
+            
+            const data = {
+                meta: {},
+                prefix: '',
+                routes: []
+            };
+
+            // Extract meta information
+            const metaMatch = text.match(/meta:\s*{([^}]+)}/s);
+            if (metaMatch) {
+                const metaText = metaMatch[1];
+                
+                const nameMatch = metaText.match(/name:\s*['"`]([^'"`]+)['"`]/);
+                if (nameMatch) data.meta.name = nameMatch[1];
+                
+                const descMatch = metaText.match(/description:\s*['"`]([^'"`]+)['"`]/);
+                if (descMatch) data.meta.description = descMatch[1];
+                
+                const versionMatch = metaText.match(/version:\s*['"`]([^'"`]+)['"`]/);
+                if (versionMatch) data.meta.version = versionMatch[1];
+            }
+
+            // Extract prefix
+            const prefixMatch = text.match(/prefix:\s*['"`]([^'"`]+)['"`]/);
+            if (prefixMatch) {
+                data.prefix = prefixMatch[1];
+            }
+
+            // Extract routes (simplified parsing)
+            const routesMatch = text.match(/routes:\s*\[([^\]]+)\]/s);
+            if (routesMatch) {
+                const routesText = routesMatch[1];
+                
+                // Split by route objects (look for path: patterns)
+                const routeMatches = routesText.match(/{[^}]*path:\s*['"`][^'"`]+['"`][^}]*}/g);
+                
+                if (routeMatches) {
+                    routeMatches.forEach(routeText => {
+                        const route = {};
+                        
+                        const pathMatch = routeText.match(/path:\s*['"`]([^'"`]+)['"`]/);
+                        if (pathMatch) route.path = pathMatch[1];
+                        
+                        const methodMatch = routeText.match(/method:\s*['"`]([^'"`]+)['"`]/);
+                        if (methodMatch) route.method = methodMatch[1];
+                        
+                        if (route.path && route.method) {
+                            data.routes.push(route);
+                        }
+                    });
+                }
+            }
+
+            return data;
+        }
+
+        function renderApiDocumentation(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            // Set base URL for testing
+            baseUrl = window.location.origin + (data.prefix || '');
+
+            // Populate meta information
+            document.getElementById('api-name').textContent = data.meta.name || 'Unknown API';
+            document.getElementById('api-version').textContent = data.meta.version || 'Unknown';
+            document.getElementById('api-prefix').textContent = data.prefix || '/';
+            document.getElementById('route-count').textContent = data.routes.length;
+            document.getElementById('api-description-text').textContent = data.meta.description || 'No description available';
+
+            // Render routes
+            const container = document.getElementById('routes-container');
+            container.innerHTML = '';
+
+            data.routes.forEach((route, index) => {
+                const routeCard = createRouteCard(route, index);
+                container.appendChild(routeCard);
+            });
+        }
+
+        function createRouteCard(route, index) {
+            const card = document.createElement('div');
+            card.className = 'route-card';
+
+            const fullPath = (apiData.prefix || '') + route.path;
+            const method = route.method.toUpperCase();
+
+            card.innerHTML = `
+                <div class="route-header" onclick="toggleRoute(${index})">
+                    <div style="display: flex; align-items: center;">
+                        <span class="route-method method-${method.toLowerCase()}">${method}</span>
+                        <span class="route-path">${fullPath}</span>
+                    </div>
+                    <span class="route-expand" id="expand-${index}">▼</span>
+                </div>
+                <div class="route-details" id="details-${index}">
+                    <div class="route-section">
+                        <h4>🎯 Endpoint</h4>
+                        <div class="code-block">${method} ${fullPath}</div>
+                    </div>
+                    <div class="route-section">
+                        <h4>🧪 Try it out</h4>
+                        <button class="try-button" onclick="toggleTrySection(${index})">Test Endpoint</button>
+                        <div class="try-section" id="try-${index}">
+                            <div id="params-${index}"></div>
+                            <button class="try-button" onclick="makeRequest(${index}, '${method}', '${fullPath}')">Send Request</button>
+                            <div class="response-area" id="response-${index}" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function toggleRoute(index) {
+            const details = document.getElementById(`details-${index}`);
+            const expand = document.getElementById(`expand-${index}`);
+            
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                expand.classList.remove('expanded');
+            } else {
+                details.classList.add('expanded');
+                expand.classList.add('expanded');
+            }
+        }
+
+        function toggleTrySection(index) {
+            const trySection = document.getElementById(`try-${index}`);
+            trySection.classList.toggle('active');
+            
+            if (trySection.classList.contains('active')) {
+                setupParamsSection(index);
+            }
+        }
+
+        function setupParamsSection(index) {
+            const route = apiData.routes[index];
+            const paramsContainer = document.getElementById(`params-${index}`);
+            
+            // Extract path parameters
+            const pathParams = route.path.match(/:(\w+)/g) || [];
+            
+            let paramsHtml = '';
+            
+            if (pathParams.length > 0) {
+                paramsHtml += '<h5>Path Parameters:</h5>';
+                pathParams.forEach(param => {
+                    const paramName = param.substring(1);
+                    paramsHtml += `
+                        <div>
+                            <label>${paramName}:</label>
+                            <input type="text" class="param-input" id="param-${index}-${paramName}" placeholder="Enter ${paramName}">
+                        </div>
+                    `;
+                });
+            }
+            
+            if (route.method.toUpperCase() === 'POST' || route.method.toUpperCase() === 'PUT') {
+                paramsHtml += '<h5>Request Body (JSON):</h5>';
+                paramsHtml += `<textarea class="param-input" id="body-${index}" rows="4" placeholder='{"key": "value"}'></textarea>`;
+            }
+            
+            paramsContainer.innerHTML = paramsHtml;
+        }
+
+        async function makeRequest(index, method, path) {
+            const route = apiData.routes[index];
+            const responseArea = document.getElementById(`response-${index}`);
+            
+            // Build URL with path parameters
+            let url = baseUrl + path;
+            const pathParams = path.match(/:(\w+)/g) || [];
+            
+            pathParams.forEach(param => {
+                const paramName = param.substring(1);
+                const paramInput = document.getElementById(`param-${index}-${paramName}`);
+                if (paramInput) {
+                    url = url.replace(param, paramInput.value || 'test');
+                }
+            });
+
+            // Prepare request options
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            // Add body for POST/PUT requests
+            if (method === 'POST' || method === 'PUT') {
+                const bodyInput = document.getElementById(`body-${index}`);
+                if (bodyInput && bodyInput.value.trim()) {
+                    try {
+                        JSON.parse(bodyInput.value);
+                        options.body = bodyInput.value;
+                    } catch (e) {
+                        responseArea.style.display = 'block';
+                        responseArea.textContent = 'Error: Invalid JSON in request body';
+                        return;
+                    }
+                }
+            }
+
+            responseArea.style.display = 'block';
+            responseArea.textContent = 'Sending request...';
+
+            try {
+                const response = await fetch(url, options);
+                const responseText = await response.text();
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    responseData = JSON.stringify(responseData, null, 2);
+                } catch (e) {
+                    responseData = responseText;
+                }
+
+                responseArea.textContent = `Status: ${response.status} ${response.statusText}\n\n${responseData}`;
+                
+            } catch (error) {
+                responseArea.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        initAutoRefresh('{{FILE_PATH}}');
+    </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Administrater Applet
+**Purpose**: Create an applet that can be accessed by `/admin` route. At this route it will render a card for every applet that has a page named `admin.json`. Use the contents of the `admin.json` file to generate the card.

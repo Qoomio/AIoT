@@ -137,3 +137,25 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Qoom Related
+projects/
+/kits/
+applets/terminaler/sessions/
+applets/editer/monaco-settings/monaco-settings.json
+applets/editer/versioner/.versions
+.DS_Store
+Thumbs.db
+.vscode/
+/build/
+/test-output/
+pnpm-debug.log*
+*.tmp
+*.swp
+*.out
+*.exe
+*.dll
+*.class
+*.apk
+
+

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Terminal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/view/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/view/favicon.png">
+    <link rel="stylesheet" href="/view/applets/terminaler/frontend/lib/xterm/xterm.css">
+    <link rel="stylesheet" href="/view/applets/terminaler/frontend/terminal.css">
+    <script type="module" src="/view/applets/terminaler/frontend/terminal.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>💻 Web Terminal</h1>
+        <div class="header-actions">
+            <div class="status-indicator">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <button class="reset-btn" id="resetTerminalBtn" title="Reset Terminal Session">🔥 Reset</button>
+        </div>
+    </div>
+    
+    <div class="terminal-container">
+        <div id="terminal"></div>
+        <div id="loading" class="loading">Loading Terminal...</div>
+        <div id="error" class="error">
+            <div>Failed to connect to terminal</div>
+            <div style="margin-top: 10px; font-size: 14px;">Please check your connection and try again.</div>
+        </div>
+    </div>
+
+    <div class="footer">
+    </div>
+
+    <script src="/view/applets/terminaler/frontend/lib/xterm/xterm.js"></script>
+    <script src="/view/applets/terminaler/frontend/lib/xterm/addons/addon-fit.js"></script>
+    <script src="/view/applets/terminaler/frontend/lib/xterm/addons/addon-web-links.js"></script>
+    <script src="/view/applets/terminaler/frontend/lib/xterm/addons/addon-search.js"></script>
+</body>
+</html> 

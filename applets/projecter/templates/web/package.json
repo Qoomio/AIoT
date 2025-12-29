@@ -1,0 +1,17 @@
+{
+  "name": "hello-world-web",
+  "version": "1.0.0",
+  "description": "Full-stack web project with HTML, CSS, JS frontend and Node.js backend",
+  "main": "server.js",  
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["web", "html", "css", "javascript", "nodejs", "fullstack"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
