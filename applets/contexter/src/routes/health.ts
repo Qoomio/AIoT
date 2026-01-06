@@ -1,20 +1,16 @@
-import express from 'express';
+import { Request, Response } from 'express';
 
-const router = express.Router();
-
-router.get('/status', (req, res) => {
+export const healthStatusHandler = (req: Request, res: Response) => {
   const healthData = {
     status: 'healthy',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   };
-  
+
   res.json(healthData);
-});
+};
 
-router.get('/ping', (req, res) => {
+export const healthPingHandler = (req: Request, res: Response) => {
   res.json({ message: 'pong' });
-});
-
-export default router;
+};

@@ -54,8 +54,8 @@
   - `addon-fit.js` (1KB) ✅
   - `addon-web-links.js` (3KB) ✅
   - `addon-search.js` (12KB) ✅
-- [x] Create npm script for bundle update: `"update-xterm": "node scripts/setup-xterm-offline.js"`
-- [x] Create setup script `scripts/setup-xterm-offline.js` to automate file copying
+- [x] Create npm script for bundle update: `"update-xterm": "node applets/shared/setup-xterm-offline.js"`
+- [x] Create setup script `applets/shared/setup-xterm-offline.js` to automate file copying
 - [x] Verify all files are accessible via `/view/applets/terminaler/frontend/lib/xterm/`
 - [x] Test loading xterm.js and addons from local files
 - [ ] Add .gitignore entries for node_modules but keep local lib files committed

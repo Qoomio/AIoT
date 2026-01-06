@@ -17,7 +17,7 @@ const buildOptions = {
     '/view/applets/navigater/frontend/navigater.js',
     '/view/applets/shared/file-types-config.js',
     '/view/applets/editer/monaco-editor/esm/vs/editor/editor.main.js',
-    '/view/scripts/marked.esm.js'
+    '/view/applets/shared/marked.esm.js'
   ],
 };
 

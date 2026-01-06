@@ -101,15 +101,6 @@ async function processChatMessage(message, agent = 'qoom', agentInfo = null, fil
   // Check if this is a project creation request for Starter Mode
   const isProjectRequest = isStarterMode && isProjectCreationRequest(message);
 
-  try {
-    const context = await getCodeContext(message)
-    message = `#Code context:\n ${context} \n\n\n #User Query\n ${message}`
-    console.log(`Code context: ${context}`)
-  } catch(e) {
-    // do nothing
-    console.log(`Error getting context: ${e}`)
-  }
-
   // Route to appropriate AI service based on agent
   if (agent === 'qoom') {
     return await callQoomLLM(message, fileContext, isProjectRequest);
@@ -174,13 +165,13 @@ async function callQoomLLM(message, fileContext = null, isProjectRequest = false
       systemPrompt += `\n\nFile Context:\nFile: ${fileContext.path}\nContent:\n\`\`\`\n${fileContext.content}\n\`\`\``;
     }
 
-    const response = await fetch('https://www.qoom.ai/v1/chat/completions', {
+    const response = await fetch('http://localhost:3000/tracer/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'mlx-community/Llama-3.2-1B-Instruct-4bit',
+        model: 'mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }

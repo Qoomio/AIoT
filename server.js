@@ -3,16 +3,26 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import zlib from 'zlib';
 
+// dotenv is helpful in dev, but the server should not crash if it's missing in a partial install.
+try {
+  const dotenvModule = await import('dotenv');
+  const dotenv = dotenvModule.default || dotenvModule;
+  if (dotenv && typeof dotenv.config === 'function') {
 dotenv.config();
+  }
+} catch (e) {
+  console.warn('[server] dotenv not loaded:', e?.code || e?.message || e);
+}
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
+const MAX_LISTEN_RETRIES = 10;
+const LISTEN_RETRY_DELAY_MS = 250;
 
 /**
  * Check if content should be compressed
@@ -89,6 +99,7 @@ let server;
 
 /**
  * Recursively find all api.js files in the applets directory
+ * Filters based on NODE_ENV: 'student' excludes teacher paths, 'teacher' excludes student paths
  * @param {string} dir - Directory to search
  * @param {Array} results - Array to store results
  * @returns {Array} Array of api.js file paths
@@ -101,6 +112,9 @@ function findApiFiles(dir, results = []) {
       ignoreFiles = fs.readFileSync(ignorePath, 'utf8').split('\n').map(line => path.join(appletsDirectory, line.trim()));
     }
     const files = fs.readdirSync(dir);
+    
+    // Get NODE_ENV for filtering student/teacher routes
+    const nodeEnv = process.env.NODE_ENV || 'development';
 
     for (const file of files) {
       const filePath = path.join(dir, file);
@@ -110,6 +124,22 @@ function findApiFiles(dir, results = []) {
       const stat = fs.statSync(filePath);
 
       if (stat.isDirectory()) {
+        // Only skip student/teacher directories inside challenger applet
+        const isInsideChallenger = filePath.includes('/challenger/');
+        
+        // Skip teacher directory inside challenger if NODE_ENV is 'student'
+        if (nodeEnv === 'student' && file === 'teacher' && isInsideChallenger) {
+          console.log(`Skipping teacher directory in student mode: ${filePath}`);
+          continue;
+        }
+        // Skip student directory inside challenger if NODE_ENV is 'teacher'
+        if (nodeEnv === 'teacher' && file === 'student' && isInsideChallenger) {
+          console.log(`Skipping student directory in teacher mode: ${filePath}`);
+        }
+        // Skip dist and node_modules directories (TypeScript build outputs)
+        if (file === 'dist' || file === 'node_modules') {
+          continue;
+        }
         // Recursively search subdirectories
         findApiFiles(filePath, results);
       } else if (file === 'api.js') {
@@ -123,7 +153,7 @@ function findApiFiles(dir, results = []) {
 
   return results;
 }
-
+ 
 /**
  * Load and validate an API file
  * @param {string} filePath - Path to the api.js file
@@ -635,7 +665,7 @@ async function reloadAppletRoutes() {
 
 async function createWebSocketServer() {
   try {
-    const { wsRouter: router } = await import('./utils/websocket-router.js');
+    const { wsRouter: router } = await import('./applets/shared/websocket-router.js');
     wsRouter = router;
 
     console.log('WebSocket router initialized');
@@ -648,8 +678,22 @@ function createServer() {
   server = http.createServer(async (req, res) => {
     // Check if this is a request to the root path
     if (req.url === '/' && req.method === 'GET') {
-      // Redirect to the admin dashboard
-      res.writeHead(302, { 'Location': process.env.HOME_PAGE || '/admin' });
+      // Redirect based on NODE_ENV or HOME_PAGE setting
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      let homePage = process.env.HOME_PAGE;
+      
+      // Auto-set home page based on NODE_ENV if not explicitly set
+      if (!homePage) {
+        if (nodeEnv === 'student') {
+          homePage = '/challenges';
+        } else if (nodeEnv === 'teacher') {
+          homePage = '/students';
+        } else {
+          homePage = '/admin';
+        }
+      }
+      
+      res.writeHead(302, { 'Location': homePage });
       res.end();
       return;
     }
@@ -717,10 +761,41 @@ async function initializeServer() {
   server.keepAliveTimeout = 65000; // 65초
   server.headersTimeout = 66000; // 66초
   
+  function listenWithRetry(attempt = 0) {
+    server.once('error', (err) => {
+      if (err && err.code === 'EADDRINUSE' && attempt < MAX_LISTEN_RETRIES) {
+        console.warn(`[server] Port ${PORT} in use. Retrying in ${LISTEN_RETRY_DELAY_MS}ms... (${attempt + 1}/${MAX_LISTEN_RETRIES})`);
+        setTimeout(() => listenWithRetry(attempt + 1), LISTEN_RETRY_DELAY_MS).unref?.();
+        return;
+      }
+      console.error('[server] listen error:', err);
+      process.exit(1);
+    });
+  
   server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}/`);
     console.log(`Timeout settings: ${server.timeout}ms`);
   });
+  }
+
+  // Graceful shutdown so node --watch restarts don't leave the port occupied.
+  function shutdown(signal) {
+    try {
+      console.log(`[server] Received ${signal}. Shutting down...`);
+      if (server && typeof server.close === 'function') {
+        server.close(() => process.exit(0));
+        setTimeout(() => process.exit(0), 1000).unref?.();
+      } else {
+        process.exit(0);
+      }
+    } catch {
+      process.exit(0);
+    }
+  }
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+
+  listenWithRetry(0);
 }
 
 // Start the server

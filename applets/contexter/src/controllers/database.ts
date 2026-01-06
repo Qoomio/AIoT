@@ -40,13 +40,13 @@ export const createDatabaseHandler = async (req: Request, res: Response)=>{
 
   const createResult = await qdrantService.createCollection(collectionName);
   if (createResult.isErr()) {
-    console.error(createResult.error);
+    console.error("[Contexter:createDatabaseHandler] Failed to create database:", createResult.error);
     return res.status(500).json({error: 'Failed to create database'});
   }
 
   const createPayloadIndexResult = await qdrantService.createPayloadIndex(collectionName, 'metadata.filePath');
   if (createPayloadIndexResult.isErr()) {
-    console.error(createPayloadIndexResult.error);
+    console.error("[Contexter:createDatabaseHandler] Failed to create payload index:", createPayloadIndexResult.error);
     return res.status(500).json({error: 'Failed to create payload index'});
   }
 
@@ -78,14 +78,22 @@ export const queryDatabaseHandler = async (req: Request, res: Response)=>{
         return res.status(500).json({error: 'Failed to embed query'});
     }
 
+    const embedBM25Result = await embedderService.embedBM25Single(query)
+    if (embedBM25Result.isErr()) {
+      return res.status(500).json({error: 'Failed to embed query'});
+    }
+
     const queryOptions: QueryOptions = {
       limit: limit,
       scoreThreshold: scoreThreshold,
       includePayload: includePayload,
       filter: filter 
     };
-
-    const results = await qdrantService.query(embedResult.value, collectionName, queryOptions);
+    const queryVectors = {
+      dense: embedResult.value, 
+      bm25: embedBM25Result.value
+    }
+    const results = await qdrantService.query(queryVectors, collectionName, queryOptions);
     if (results.isErr()) {
         return res.status(500).json({error: 'Failed to query database'});
     }
@@ -118,24 +126,34 @@ export const updateDatabaseHelper = async (collectionName : string, filePath : s
 
   const embedResults = await embedderService.embed(chunks.map(chunk => chunk.content));
   if (embedResults.isErr()) {
-    return err(Error('Failed to embed chunks'));
+    return err(Error(`Failed to embed chunks: ${embedResults.error.message}`));
+  }
+  const bm25EmbedResults = await embedderService.embedBM25(chunks.map(chunk => chunk.content));
+  if (bm25EmbedResults.isErr()) {
+    return err(Error(`Failed to embed chunks using bm25: ${bm25EmbedResults.error.message}`));
   }
 
   const stats = fs.statSync(filePath);
-  const metadata: CodeChunkMetadata = {
+
+  const metadatas: CodeChunkMetadata[] = chunks.map(chunk => ({
     filePath: filePath,
     fileName: path.basename(filePath),
     fileExtension: path.extname(filePath),
     fileSize: stats.size,
-    fileLastModified: stats.mtime.toISOString()
-  };
+    fileLastModified: stats.mtime.toISOString(),
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+  }));
 
   const vectorRecords: VectorRecord[] = embedResults.value.map((vector, index) => ({
     id: uuidv4(),
-    vector: vector,
+    vector: {
+      dense: vector,
+      bm25: bm25EmbedResults.value[index]!
+    },
     payload: {
       codeString: chunks[index]?.content ?? '',
-      metadata: metadata
+      metadata: metadatas[index]!
     }
   }));
 

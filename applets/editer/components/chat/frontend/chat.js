@@ -3,7 +3,7 @@
  * 
  * Handles the chat functionality in the Monaco editor interface.
  */
-import { marked } from '/view/scripts/marked.esm.js';
+import { marked } from '/view/applets/shared/marked.esm.js';
 
 
 'use strict';

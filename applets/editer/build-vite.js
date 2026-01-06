@@ -18,7 +18,7 @@ const viteConfig = defineConfig({
       external: [
         '/view/applets/navigater/frontend/navigater.js',
         '/view/applets/shared/file-types-config.js',
-        '/view/scripts/marked.esm.js'
+        '/view/applets/shared/marked.esm.js'
       ],
       output: {
         assetFileNames: (assetInfo) => {

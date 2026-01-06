@@ -148,6 +148,11 @@ function readFileContent(filePath) {
  * @param {Buffer} data - The file data
  */
 function serveFile(req, res, filePath, contentType, data) {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isDev = nodeEnv !== 'production';
+  const isAppletAsset = filePath.includes('/applets/') || filePath.startsWith('applets/');
+  const isHotChangingAsset = filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html');
+
   // Special handling for Monaco CSS files imported as modules
   if (contentType === 'text/javascript' && filePath.includes('monaco-editor/esm/') && filePath.endsWith('.css')) {
     // Convert CSS content to JavaScript module that injects the styles
@@ -195,6 +200,11 @@ export {};`;
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
       headers['Pragma'] = 'no-cache';
       headers['Expires'] = '0';
+    } else if (isDev && isAppletAsset && isHotChangingAsset) {
+      // In dev, always bypass cache for applet assets so UI changes apply immediately.
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
     } else {
       headers['Cache-Control'] = 'public, max-age=86400'; // 24 hours cache
     }
@@ -213,6 +223,11 @@ export {};`;
   // Add cache headers for static assets
   if (filePath.includes('/projects/') || filePath.startsWith('projects/')) {
     // Explicitly no-cache for user development files in projects folder
+    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    headers['Pragma'] = 'no-cache';
+    headers['Expires'] = '0';
+  } else if (isDev && isAppletAsset && isHotChangingAsset) {
+    // In dev, always bypass cache for applet assets so UI changes apply immediately.
     headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     headers['Pragma'] = 'no-cache';
     headers['Expires'] = '0';

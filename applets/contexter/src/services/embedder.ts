@@ -1,10 +1,12 @@
 import { Result, err, ok } from 'neverthrow';
+import { BM25Vector } from '../types/qdrant';
+import murmurhash from 'murmurhash';
 
 export default class EmbedderService {
   private apiKey: string;
   private baseUrl: string;
 
-  constructor(apiKey: string, baseUrl: string = 'https://api.openai.com/v1') {
+  constructor(apiKey: string, baseUrl: string = 'https://www.qoom.ai/v1') {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
   }
@@ -19,7 +21,7 @@ export default class EmbedderService {
         },
         body: JSON.stringify({
           input: texts,
-          model: 'text-embedding-ada-002'
+          model: 'mlx-community/all-MiniLM-L6-v2-4bit'
         })
       });
 
@@ -45,5 +47,35 @@ export default class EmbedderService {
       return err(new Error('No embedding returned'));
     }
     return ok(embedding);
+  }
+
+  async embedBM25(texts: string[]): Promise<Result<BM25Vector[], Error>> {
+    try {
+      const embeddings: BM25Vector[] = [];
+      for (const text of texts) {
+        const result = await this.embedBM25Single(text);
+        if (result.isErr()) {
+          return err(result.error);
+        }
+        embeddings.push(result.value);
+      }
+      return ok(embeddings);
+    } catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async embedBM25Single(text: string): Promise<Result<BM25Vector, Error>> {
+    const words = text.toLowerCase().match(/\b\w+\b/g);
+    if (!words) {
+      return ok({indices: [], values: []});
+    }
+    const hashValues = words.map(word => murmurhash.v3(word, 0));
+    const dictionary = new Map<number, number>();
+    for (const hashValue of hashValues) {
+      dictionary.set(hashValue, (dictionary.get(hashValue) || 0) + 1);
+    }
+    
+    return ok({indices: Array.from(dictionary.keys()), values: Array.from(dictionary.values())});
   }
 }

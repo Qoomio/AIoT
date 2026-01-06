@@ -37,12 +37,12 @@ export class WatcherService {
 
     try {
       const wsUrl = `${this.options.protocol}://${this.options.host}:${this.options.port}/watcher/_sync`;
-      console.log(`[WatcherService] Connecting to watcher at ${wsUrl}`);
+      console.log(`[Contexter:WatcherService] Connecting to watcher at ${wsUrl}`);
 
       this.ws = new WebSocket(wsUrl);
 
       this.ws.on('open', () => {
-        console.log('[WatcherService] Connected to watcher');
+        console.log('[Contexter:WatcherService] Connected to watcher');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.options.onConnect();
@@ -53,12 +53,12 @@ export class WatcherService {
           const message = JSON.parse(data.toString());
           this.handleWatcherEvent(message);
         } catch (error) {
-          console.error('[WatcherService] Failed to parse message:', error);
+          console.error('[Contexter:WatcherService] Failed to parse message:', error);
         }
       });
 
       this.ws.on('close', (code: number, reason: Buffer) => {
-        console.log(`[WatcherService] Disconnected from watcher (${code}: ${reason.toString()})`);
+        console.log(`[Contexter:WatcherService] Disconnected from watcher (${code}: ${reason.toString()})`);
         this.isConnecting = false;
         this.options.onDisconnect();
         
@@ -68,7 +68,7 @@ export class WatcherService {
       });
 
       this.ws.on('error', (error: Error) => {
-        console.error('[WatcherService] WebSocket error:', error);
+        console.error('[Contexter:WatcherService] WebSocket error:', error);
         this.isConnecting = false;
         this.options.onError(error);
         
@@ -93,7 +93,7 @@ export class WatcherService {
     }
 
     const event = message as FileChangedEvent;
-    console.log(`[WatcherService] File changed: ${event.filePath}`);
+    console.log(`[Contexter:WatcherService] File changed: ${event.filePath}`);
     this.options.onFileChanged(event);
   }
 
@@ -115,14 +115,14 @@ export class WatcherService {
    */
   private scheduleReconnect(): void {
     if (this.isDestroyed || this.reconnectAttempts >= this.options.maxReconnectAttempts) {
-      console.log('[WatcherService] Max reconnection attempts reached or service destroyed');
+      console.log('[Contexter:WatcherService] Max reconnection attempts reached or service destroyed');
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.options.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
     
-    console.log(`[WatcherService] Scheduling reconnection attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts} in ${delay}ms`);
+    console.log(`[Contexter:WatcherService] Scheduling reconnection attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts} in ${delay}ms`);
     
     this.reconnectTimer = setTimeout(() => {
       this.connect();
@@ -164,7 +164,7 @@ export class WatcherService {
   destroy(): void {
     this.isDestroyed = true;
     this.disconnect();
-    console.log('[WatcherService] Service destroyed');
+    console.log('[Contexter:WatcherService] Service destroyed');
   }
 }
 

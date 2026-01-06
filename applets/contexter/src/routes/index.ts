@@ -1,10 +1,3 @@
-import express from 'express';
-import databaseRouter from './database';
-import healthRouter from './health';
-
-const router = express.Router();
-
-router.use('/database', databaseRouter);
-router.use('/health', healthRouter);
-
-export default router;
+// Export all route handlers for use in api.ts
+export { healthStatusHandler, healthPingHandler } from './health';
+export { createDatabaseHandler, queryDatabaseHandler, updateDatabaseHandler } from '../controllers/database';

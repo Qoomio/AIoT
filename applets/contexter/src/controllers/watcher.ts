@@ -5,6 +5,11 @@ import os from 'os';
 import path from "path"
 const username = os.userInfo().username; // Using username as collection name
 
+function isHiddenPath(filePath: string): boolean {
+    const pathComponents = filePath.split(path.sep);
+    return pathComponents.some(component => component.startsWith('.') && component !== '.' && component !== '..');
+}
+
 const watcherService: WatcherService = new WatcherService({
     host: 'localhost',
     port: 3000,
@@ -12,14 +17,15 @@ const watcherService: WatcherService = new WatcherService({
     reconnectInterval: 1000,
     maxReconnectAttempts: 10,
     onFileChanged: async (event: FileChangedEvent)=>{
-        const rootDir = process.cwd();
-        const parts = rootDir.split(path.sep);
-        // TODO: Removing last two sections of directory as the contexter process is ran independently
-        // remove this when integrating with api.js
-        const transformed = parts.slice(0, -2).join('/')
-        
-        const updateResult = await updateDatabaseHelper(username, transformed + "/" + event.filePath);  
-        console.log(updateResult) 
+        if (isHiddenPath(event.filePath)) {
+            return;
+        }
+
+        const updateResult = await updateDatabaseHelper(username, event.filePath);
+        if (updateResult.isErr()) {
+            console.error("[Contexter:watcherService] Failed to update database:", updateResult.error);
+            console.error("[Contexter:watcherService] File path:", event.filePath);
+        }
     },
     // onConnect
     // onDisconnect
@@ -27,9 +33,9 @@ const watcherService: WatcherService = new WatcherService({
 })
 
 export async function initializeWatcher(): Promise<void> {
-    await safeCreateDatabase(username)
-
     try {
+        console.log('[Contexter] Initializing watcher')
+        await safeCreateDatabase(username)
         watcherService.connect();
         console.log('[Contexter] Watcher service initialized');
     } catch (error) {

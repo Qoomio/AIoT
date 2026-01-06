@@ -1,6 +1,6 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { Result, err, ok } from 'neverthrow';
-import { VectorRecord, QueryResult, QueryOptions, QueryFilters} from '../types/qdrant';
+import { VectorRecord, QueryResult, QueryOptions, QueryFilters, QueryVectors} from '../types/qdrant';
 
 const buildFilterConditions = (filter: QueryFilters | undefined) => {
   if (!filter) return undefined;
@@ -27,7 +27,7 @@ export default class QdrantService {
   }
 
   async query(
-    queryVector: number[],
+    queryVector: QueryVectors,
     collectionName: string,
     options: QueryOptions = {}
   ): Promise<Result<QueryResult[], Error>> {
@@ -41,20 +41,33 @@ export default class QdrantService {
 
       const filterConditions = buildFilterConditions(filter);
 
-      const searchParams: any = {
-        vector: queryVector,
-        limit: limit,
+      const prefetch = [
+        {
+          query: queryVector.dense,
+          using: "dense",
+          limit: limit * 2, 
+          ...(filterConditions && { filter: filterConditions }),
+        },
+        {
+          query: {
+            indices: queryVector.bm25.indices,
+            values: queryVector.bm25.values,
+          },
+          using: "bm25",
+          limit: limit * 2,
+          ...(filterConditions && { filter: filterConditions }),
+        },
+      ];
+
+      const searchResult = await this.client.query(collectionName, {
+        prefetch,
+        query: { fusion: "rrf" },
+        limit,
         score_threshold: scoreThreshold,
-        with_payload: includePayload
-      };
+        with_payload: includePayload,
+      });
 
-      if (filterConditions) {
-        searchParams.filter = filterConditions;
-      }
-
-      const searchResult = await this.client.search(collectionName, searchParams);
-
-      const results = searchResult.map((result: any) => ({
+      const results = (searchResult.points || []).map((result: any) => ({
         id: result.id as string,
         score: result.score,
         payload: result.payload
@@ -79,7 +92,10 @@ export default class QdrantService {
       await this.client.upsert(collectionName, {
         points: [{
           id: record.id,
-          vector: record.vector,
+          vector: {
+            dense: record.vector.dense,
+            bm25: record.vector.bm25,
+          },
           payload: { ...record.payload }
         }]
       });
@@ -94,7 +110,10 @@ export default class QdrantService {
     try {
       const points = records.map((record) => ({
         id: record.id,
-        vector: record.vector,
+        vector: {
+          dense: record.vector.dense,
+          bm25: record.vector.bm25,
+        },
         payload: { ...record.payload }
       }));
 
@@ -118,10 +137,17 @@ export default class QdrantService {
     try {
       await this.client.createCollection(collectionName, {
         vectors: {
-          size: 1536,
-          distance: 'Cosine',
-          on_disk: true
-        }
+          dense: {
+            size: 384, // TODO, IMPORTANT vector size depends on the embedding model
+            distance: 'Cosine',
+            on_disk: true
+          }
+        },
+        sparse_vectors: {
+          bm25: {
+            modifier: "idf",
+          },
+        },
       });
 
       return ok(undefined);
@@ -212,12 +238,15 @@ export default class QdrantService {
   async clearCollection(collectionName: string): Promise<Result<void, Error>> {
     try {
       await this.client.deleteCollection(collectionName);
-      await this.client.createCollection(collectionName, {
-        vectors: {
-          size: 1536,
-          distance: 'Cosine'
-        }
-      });
+      const createCollectionResult = await this.createCollection(collectionName);
+      if (createCollectionResult.isErr()) {
+        return createCollectionResult;
+      }
+
+      const createPayloadIndexResult = await this.createPayloadIndex(collectionName, 'metadata.filePath');
+      if (createPayloadIndexResult.isErr()) {
+        return createPayloadIndexResult;
+      }
 
       return ok(undefined);
     } catch (error) {

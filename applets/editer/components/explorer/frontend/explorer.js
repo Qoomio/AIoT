@@ -10,11 +10,90 @@ import qoomEvent from "../../../utils/qoomEvent.js"
 import * as searchTab from "../../searcher/frontend/search.js"
 
 const expandedDirs = new Set();
+// Prevent stale async directory loads from writing into a re-rendered/replaced DOM tree.
+// Key: dirPath, Value: incrementing version number.
+const dirLoadVersion = new Map();
+// Auto-retry loading for expanded folders that remain stuck in "loading" state.
+const dirLoadRetryCount = new Map();
 
 let state = null;
 let currentTab = 'explorer';
 let dragCounter = 0;
 let contextMenuTargetFolder = null;
+
+function getFileTreeScope() {
+    return document.getElementById('file-tree') || document;
+}
+
+function getNestedListByPath(dirPath, scope = getFileTreeScope()) {
+    const lists = scope.querySelectorAll('.nested-files');
+    for (const el of lists) {
+        if (el.getAttribute('data-path') === dirPath) return el;
+    }
+    return null;
+}
+
+function getDirectoryItemByPath(dirPath, scope = getFileTreeScope()) {
+    const items = scope.querySelectorAll('.file-item.directory');
+    for (const el of items) {
+        if (el.getAttribute('data-path') === dirPath) return el;
+    }
+    return null;
+}
+
+function ensureNestedListExists(dirPath, scope = getFileTreeScope()) {
+    let nestedList = getNestedListByPath(dirPath, scope);
+    if (nestedList) return nestedList;
+
+    // Create nested container if it's missing (defensive against race / partial renders)
+    const dirItem = getDirectoryItemByPath(dirPath, scope);
+    if (!dirItem) return null;
+
+    const liElement = dirItem.closest('li');
+    if (!liElement) return null;
+
+    const nestedHtml = '<ul class="nested-files expanded" data-path="' + dirPath + '">' +
+        '<li class="loading"></li></ul>';
+    liElement.insertAdjacentHTML('beforeend', nestedHtml);
+
+    return getNestedListByPath(dirPath, liElement);
+}
+
+function scheduleLoadRetry(dirPath) {
+    if (!expandedDirs.has(dirPath)) return;
+
+    const retryCount = dirLoadRetryCount.get(dirPath) || 0;
+    if (retryCount >= 3) return;
+
+    dirLoadRetryCount.set(dirPath, retryCount + 1);
+    const delay = 400 * (retryCount + 1);
+
+    setTimeout(() => {
+        if (!expandedDirs.has(dirPath)) return;
+        const nested = getNestedListByPath(dirPath);
+        // If the nested list doesn't exist yet (parent not rendered), try again.
+        if (!nested) {
+            loadDirectoryContents(dirPath);
+            return;
+        }
+        if (nested.querySelector('li.loading')) loadDirectoryContents(dirPath);
+    }, delay);
+}
+
+function kickStuckExpandedLoads(scope = getFileTreeScope()) {
+    try {
+        const lists = scope.querySelectorAll('.nested-files.expanded');
+        lists.forEach((ul) => {
+            const p = ul.getAttribute('data-path');
+            if (!p) return;
+            if (expandedDirs.has(p) && ul.querySelector('li.loading')) {
+                scheduleLoadRetry(p);
+            }
+        });
+    } catch (e) {
+        console.error('kickStuckExpandedLoads error:', e);
+    }
+}
 
 // Mobile device detection
 function isMobileDevice() {
@@ -130,7 +209,7 @@ function setupTabToggle() {
 
 async function loadDirectory(path = '.') {
     try {
-        const response = await fetch('/editer/explorer/_api/directory?path=' + path);
+        const response = await fetch('/editer/explorer/_api/directory?path=' + encodeURIComponent(path));
         if (!response.ok) {
             throw new Error('Failed to load directory: ' + response.status);
         }
@@ -765,6 +844,8 @@ async function refreshFileTree() {
             fileTree.innerHTML = createFileTreeHTML(response.data.contents);
             attachFileTreeEvents();
             await loadExpandedDirectoriesSequentially();
+            // Defensive: if any expanded folder is still showing loading, kick retries.
+            kickStuckExpandedLoads();
         } else {
             console.error('Directory loading failed:', response);
             fileTree.innerHTML = '<li class="error">Unable to load files</li>';
@@ -776,7 +857,13 @@ async function refreshFileTree() {
 }
 
 async function loadExpandedDirectoriesSequentially() {
-    const expandedPaths = Array.from(expandedDirs).sort();
+    // Depth-first ensures parent folders are rendered before children loads run.
+    const expandedPaths = Array.from(expandedDirs).sort((a, b) => {
+        const da = a.split('/').length;
+        const db = b.split('/').length;
+        if (da !== db) return da - db;
+        return a.localeCompare(b);
+    });
     for (const dirPath of expandedPaths) {
         await loadDirectoryContents(dirPath);
         // Removed artificial 50ms delay for better performance
@@ -805,12 +892,33 @@ function updateFileTreeActiveState() {
 }
 
 async function loadDirectoryContents(dirPath) {
-    const nestedList = document.querySelector('.nested-files[data-path="' + dirPath + '"]');
-    if (!nestedList) return;
+    // Track the latest request per dirPath so older responses don't overwrite newer DOM.
+    const nextVersion = (dirLoadVersion.get(dirPath) || 0) + 1;
+    dirLoadVersion.set(dirPath, nextVersion);
+
+    let nestedList = ensureNestedListExists(dirPath);
+    if (!nestedList) {
+        scheduleLoadRetry(dirPath);
+        return;
+    }
     try {
         const response = await loadDirectory(dirPath);
         if (response.success) {
+            // If the tree was refreshed while we were loading, ensure we update the current DOM node.
+            if (dirLoadVersion.get(dirPath) !== nextVersion) return;
+            if (!expandedDirs.has(dirPath)) return;
+
+            nestedList = ensureNestedListExists(dirPath);
+            if (!nestedList) {
+                scheduleLoadRetry(dirPath);
+                return;
+            }
+
             nestedList.innerHTML = createFileTreeHTML(response.data.contents, dirPath);
+            dirLoadRetryCount.delete(dirPath);
+            // After rendering a directory, some children may have been created in loading state.
+            // Kick retries so deep expansions (e.g. active file path) don't get stuck.
+            kickStuckExpandedLoads(nestedList);
             // Set tabindex for keyboard navigation on new file items only
             const newFileItems = nestedList.querySelectorAll('.file-item');
             newFileItems.forEach(item => {
@@ -970,7 +1078,7 @@ function toggleDirectory(fileItem, path) {
     const expandIcon = fileItem.querySelector('.expand-icon');
     // file-item-wrapper -> li 구조이므로 부모의 부모를 찾아야 함
     const liElement = fileItem.closest('li');
-    const nestedList = liElement ? liElement.querySelector('.nested-files[data-path="' + path + '"]') : null;
+    const nestedList = liElement ? getNestedListByPath(path, liElement) : null;
     
     if (expandedDirs.has(path)) {
         // Collapse directory
@@ -988,12 +1096,14 @@ function toggleDirectory(fileItem, path) {
             nestedList.classList.add('expanded');
             nestedList.style.display = 'block';
             loadDirectoryContents(path);
+            scheduleLoadRetry(path);
         } else {
             const nestedHtml = '<ul class="nested-files expanded" data-path="' + path + '">' +
                 '<li class="loading"></li></ul>';
             if (liElement) {
                 liElement.insertAdjacentHTML('beforeend', nestedHtml);
                 loadDirectoryContents(path);
+                scheduleLoadRetry(path);
             }
         }
     }

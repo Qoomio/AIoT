@@ -1,7 +1,17 @@
 export interface VectorRecord {
     id: string;
-    vector: number[];
+    vector: QueryVectors;
     payload?: RecordPayload;
+}
+
+export interface QueryVectors {
+    dense: number[]
+    bm25: BM25Vector
+}
+
+export interface BM25Vector {
+    indices: number[],
+    values: number[]
 }
 
 export interface RecordPayload {
@@ -15,6 +25,8 @@ export interface CodeChunkMetadata {
     fileExtension: string;
     fileSize: number;
     fileLastModified: string;
+    startLine: number;
+    endLine: number;
 }
   
 export interface QueryResult {

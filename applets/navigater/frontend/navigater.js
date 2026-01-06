@@ -25,6 +25,43 @@ function loadNavigaterCSS() {
     document.head.appendChild(link);
 }
 
+// Cache for environment info
+let cachedEnv = null;
+
+async function getEnvironment() {
+    if (cachedEnv !== null) return cachedEnv;
+    try {
+        const res = await fetch('/navigater/env');
+        if (!res.ok) return 'development';
+        const data = await res.json();
+        cachedEnv = data.env || 'development';
+        return cachedEnv;
+    } catch (err) {
+        console.error('Failed to get environment info:', err);
+        return 'development';
+    }
+}
+
+function removeUnavailableButtons(headerElement, env) {
+    // student mode: remove Students button
+    if (env === 'student') {
+        const studentsBtn = headerElement.querySelector('[data-applet="Students"]');
+        if (studentsBtn) {
+            studentsBtn.remove();
+            console.log('Removed Students button in student mode');
+        }
+    }
+    
+    // teacher mode: remove Challenges button
+    if (env === 'teacher') {
+        const challengesBtn = headerElement.querySelector('[data-applet="challenger"]');
+        if (challengesBtn) {
+            challengesBtn.remove();
+            console.log('Removed Challenges button in teacher mode');
+        }
+    }
+}
+
 function addEventListeners() {
     const remoteBtn = document.querySelector('#remote-button');
     const pullBtn = document.querySelector('#pull-button');
@@ -105,13 +142,18 @@ export async function inject(appletName) {
         basePath = scriptUrl.pathname.replace('navigater.js', '');
     }
     
-    // Fetch the navigater.html file
+    // Fetch environment and navigater.html in parallel
     try {
-        const response = await fetch(basePath + 'navigater.html');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const [envResult, htmlResponse] = await Promise.all([
+            getEnvironment(),
+            fetch(basePath + 'navigater.html')
+        ]);
+        
+        if (!htmlResponse.ok) {
+            throw new Error(`HTTP error! status: ${htmlResponse.status}`);
         }
-        const html = await response.text();
+        const html = await htmlResponse.text();
+        
         // Create a temporary div to hold the HTML content
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html.trim();
@@ -120,6 +162,9 @@ export async function inject(appletName) {
         const headerElement = tempDiv.firstChild;
         if (headerElement) {
             headerElement.setAttribute('data-navigater-injected', 'true');
+            
+            // Remove unavailable buttons BEFORE adding to DOM (prevents flicker)
+            removeUnavailableButtons(headerElement, envResult);
 
             // Insert as the first child of the body element
             if (document.body.firstChild) {
@@ -136,6 +181,7 @@ export async function inject(appletName) {
         if (targetButton) {
             targetButton.classList.add('active');
         }
+        
     } catch (error) {
         console.error('Error loading navigater.html:', error);
         // Fallback to inline HTML if AJAX fails
