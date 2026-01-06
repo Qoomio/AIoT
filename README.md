@@ -35,7 +35,11 @@ To install Qoom AIoT on your Raspberry Pi SD card and access it via your web bro
 
 ### 1. Prepare your SD Card (if not already done):
 
-- Use the provided `prepare_pi.sh` script on your computer to flash and configure Raspberry Pi OS on an SD card, as described at the top of this README.
+- Use the provided `prepare_pi.sh` script on your computer to flash and configure Raspberry Pi OS on an SD card, as described at the top of this README. To download and run from github:
+```
+curl -fsSL https://raw.githubusercontent.com/Qoomio/AIoT/main/scripts/prepare_pi.sh | sudo bash
+```
+
 
 ### 2. Boot and Connect:
 
