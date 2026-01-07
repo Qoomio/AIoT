@@ -144,6 +144,7 @@ projects/
 applets/terminaler/sessions/
 applets/editer/monaco-settings/monaco-settings.json
 applets/editer/versioner/.versions
+applets/editer/monaco-editor/
 .DS_Store
 Thumbs.db
 .vscode/
