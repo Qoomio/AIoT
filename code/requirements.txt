@@ -1,0 +1,6 @@
+# AIoT Python Dependencies
+# Core computer vision library
+opencv-python>=4.8.0
+
+# Scientific computing
+numpy>=1.24.0
