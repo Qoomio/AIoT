@@ -57,6 +57,7 @@ NC='\033[0m' # No Color
 # ===================================
 OS_TYPE="unknown"
 IS_WSL=false
+echo -e "Welcome to Qoom"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     OS_TYPE="mac"
