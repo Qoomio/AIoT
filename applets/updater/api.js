@@ -40,12 +40,7 @@ function isLocalChangesError(message) {
 
 async function deployHandler(req, res) {
     try {
-        // Use deploy_aiot.sh for AIOT environment, otherwise use deploy.sh
-        const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
-        const deployScript = nodeEnv === 'aiot' 
-            ? 'bash ./scripts/deploy_aiot.sh'
-            : 'bash ./scripts/deploy.sh';
-        
+        const deployScript = 'bash ./scripts/deploy.sh'         
         await runCommand(deployScript);
         res.status(202).json({ success: true, message: 'Deployment started', script: deployScript });
     } catch (err) {
