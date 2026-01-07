@@ -57,7 +57,6 @@ NC='\033[0m' # No Color
 # ===================================
 OS_TYPE="unknown"
 IS_WSL=false
-echo -e "Welcome to Qoom"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     OS_TYPE="mac"
@@ -534,7 +533,7 @@ fi
 PI_USERNAME="$PI_NAME"
 
 # Generate a 10-character secure password
-PI_PASSWORD=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 10)
+PI_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 10)
 echo ""
 echo -e "Generated secure password: ${GREEN}$PI_PASSWORD${NC}"
 read -p "Use this password? (Y/n, or enter custom password): " PASSWORD_RESPONSE
