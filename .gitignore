@@ -158,4 +158,7 @@ pnpm-debug.log*
 *.class
 *.apk
 
+!applets/editer/dist/
+!applets/editer/dist/**
+
 

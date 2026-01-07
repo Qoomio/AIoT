@@ -895,14 +895,45 @@ EOF
 fi  # End of ROOT_MOUNT_FAILED check for WiFi/hostname
 
 # ===================================
-# STEP 9: Configure Qoom Repository
+# STEP 9: Bundle AIoT Kit Code for SD Card
 # ===================================
-# Note: The Pi will clone from the public GitHub repo on first boot
-# No bundling needed - the code is pulled from: https://github.com/Qoomio/AIoT.git
 echo ""
-echo -e "${GREEN}Step 9: Configuring Qoom repository...${NC}"
+if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
+    echo -e "${YELLOW}Step 9: Skipping AIoT code bundling (root partition not mounted)${NC}"
+    AIOT_CODE_BUNDLED=false
+else
+    echo -e "${GREEN}Step 9: Bundling AIoT kit code for SD card...${NC}"
+
+    # Get the kit directory (parent of setup/)
+    # Path: products/kits/base_aiot/setup -> products/kits/base_aiot
+    AIOT_KIT_DIR="$(dirname "$SCRIPT_DIR")"
+
+    if [ -d "$AIOT_KIT_DIR/code" ]; then
+        echo "  - Found AIoT code files"
+        
+        # Create a staging area on the SD card for the kit code
+        mkdir -p "$ROOT_MOUNT/opt/qoom/aiot-code"
+        
+        # Copy the AIoT code to the SD card
+        cp -r "$AIOT_KIT_DIR/code/." "$ROOT_MOUNT/opt/qoom/aiot-code/"
+        
+        # List what was copied
+        echo "  Copied files:"
+        ls -la "$ROOT_MOUNT/opt/qoom/aiot-code/"
+        
+        echo "  ✓ AIoT code bundled to /opt/qoom/aiot-code/"
+        AIOT_CODE_BUNDLED=true
+    else
+        echo -e "${YELLOW}  Warning: AIoT code not found at $AIOT_KIT_DIR/code${NC}"
+        AIOT_CODE_BUNDLED=false
+    fi
+fi
+
+echo ""
+echo -e "${GREEN}Configuring Qoom repository...${NC}"
 echo "The Pi will clone code from: https://github.com/Qoomio/AIoT.git"
-echo "✓ Repository configured (will be cloned on first boot)"
+echo "AIoT kit code will be copied to projects/aiot/ on first boot"
+echo "✓ Repository configured"
 
 # ===================================
 # STEP 10: Create First-Boot Setup Script
@@ -1286,6 +1317,67 @@ else
     echo ""
 fi
 
+# ===================================
+# Wait for NTP time synchronization
+# ===================================
+echo "Waiting for system clock to synchronize via NTP..."
+echo "(Raspberry Pi has no hardware clock, NTP sync is required for HTTPS)"
+
+# Enable NTP
+timedatectl set-ntp true 2>/dev/null || systemctl start systemd-timesyncd 2>/dev/null || true
+
+# Wait for time sync (max 2 minutes)
+NTP_SYNCED=false
+NTP_MAX_WAIT=120
+NTP_WAIT=0
+
+while [ $NTP_WAIT -lt $NTP_MAX_WAIT ]; do
+    # Check if time is synchronized
+    if timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q "yes"; then
+        NTP_SYNCED=true
+        break
+    fi
+    
+    # Alternative check for older systems
+    if timedatectl status 2>/dev/null | grep -q "synchronized: yes"; then
+        NTP_SYNCED=true
+        break
+    fi
+    
+    # Check if year is reasonable (2025 or later)
+    CURRENT_YEAR=$(date +%Y)
+    if [ "$CURRENT_YEAR" -ge 2025 ]; then
+        # Additional sanity check - try an HTTPS connection
+        if curl -sI --connect-timeout 5 https://github.com >/dev/null 2>&1; then
+            echo "Clock appears correct (year: $CURRENT_YEAR), HTTPS working"
+            NTP_SYNCED=true
+            break
+        fi
+    fi
+    
+    if [ $((NTP_WAIT % 10)) -eq 0 ]; then
+        echo "  Waiting for NTP sync... ($NTP_WAIT/$NTP_MAX_WAIT seconds)"
+        echo "  Current time: $(date)"
+    fi
+    
+    sleep 5
+    NTP_WAIT=$((NTP_WAIT + 5))
+done
+
+if [ "$NTP_SYNCED" = true ]; then
+    echo "✓ System clock synchronized: $(date)"
+else
+    echo "WARNING: NTP sync timeout. Current time: $(date)"
+    echo "Attempting to continue anyway..."
+    # Try to set a reasonable time as fallback
+    # This at least prevents "certificate not yet valid" errors
+    if [ "$(date +%Y)" -lt 2025 ]; then
+        echo "Clock is severely wrong, attempting manual time set..."
+        date -s "2026-01-07 12:00:00" 2>/dev/null || true
+    fi
+fi
+echo ""
+
 # Get current user (the one created during image config)
 # IMPORTANT: Only list directories, not files
 SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" | head -1)
@@ -1415,6 +1507,26 @@ if [ -d "$REPO_DIR" ]; then
     chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR"
     echo "✓ Qoom application cloned successfully"
     
+    # Copy bundled AIoT kit code to projects folder
+    AIOT_BUNDLE_PATH="/opt/qoom/aiot-code"
+    if [ -d "$AIOT_BUNDLE_PATH" ]; then
+        echo ""
+        echo "Copying AIoT kit code to projects folder..."
+        mkdir -p "$REPO_DIR/projects/aiot"
+        cp -r "$AIOT_BUNDLE_PATH/." "$REPO_DIR/projects/aiot/"
+        chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR/projects/aiot"
+        echo "  ✓ AIoT code copied to $REPO_DIR/projects/aiot/"
+        
+        # List the copied files
+        echo "  Files:"
+        ls -la "$REPO_DIR/projects/aiot/"
+        
+        # Clean up the bundle
+        rm -rf "$AIOT_BUNDLE_PATH"
+    else
+        echo "Note: No bundled AIoT code found at $AIOT_BUNDLE_PATH"
+    fi
+    
     # Step 5: Run the deployment script
     echo ""
     echo "Step 5: Running deployment script..."
@@ -1424,7 +1536,7 @@ if [ -d "$REPO_DIR" ]; then
     # We need to run it inline (not in background) for first boot
     sudo -u "$SETUP_USER" bash -c "
         export NVM_DIR='$NVM_DIR'
-        export NODE_ENV='AIOT'
+        export NODE_ENV='education'
         [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
         cd '$REPO_DIR'
         
