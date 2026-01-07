@@ -895,44 +895,12 @@ EOF
 fi  # End of ROOT_MOUNT_FAILED check for WiFi/hostname
 
 # ===================================
-# STEP 9: Bundle AIoT Kit Code for SD Card
+# STEP 9: Configure Repository
 # ===================================
 echo ""
-if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-    echo -e "${YELLOW}Step 9: Skipping AIoT code bundling (root partition not mounted)${NC}"
-    AIOT_CODE_BUNDLED=false
-else
-    echo -e "${GREEN}Step 9: Bundling AIoT kit code for SD card...${NC}"
-
-    # Get the kit directory (parent of setup/)
-    # Path: products/kits/base_aiot/setup -> products/kits/base_aiot
-    AIOT_KIT_DIR="$(dirname "$SCRIPT_DIR")"
-
-    if [ -d "$AIOT_KIT_DIR/code" ]; then
-        echo "  - Found AIoT code files"
-        
-        # Create a staging area on the SD card for the kit code
-        mkdir -p "$ROOT_MOUNT/opt/qoom/aiot-code"
-        
-        # Copy the AIoT code to the SD card
-        cp -r "$AIOT_KIT_DIR/code/." "$ROOT_MOUNT/opt/qoom/aiot-code/"
-        
-        # List what was copied
-        echo "  Copied files:"
-        ls -la "$ROOT_MOUNT/opt/qoom/aiot-code/"
-        
-        echo "  ✓ AIoT code bundled to /opt/qoom/aiot-code/"
-        AIOT_CODE_BUNDLED=true
-    else
-        echo -e "${YELLOW}  Warning: AIoT code not found at $AIOT_KIT_DIR/code${NC}"
-        AIOT_CODE_BUNDLED=false
-    fi
-fi
-
-echo ""
-echo -e "${GREEN}Configuring Qoom repository...${NC}"
+echo -e "${GREEN}Step 9: Configuring Qoom repository...${NC}"
 echo "The Pi will clone code from: https://github.com/Qoomio/AIoT.git"
-echo "AIoT kit code will be copied to projects/aiot/ on first boot"
+echo "The code/ folder will be copied to projects/aiot/ on first boot"
 echo "✓ Repository configured"
 
 # ===================================
@@ -1507,24 +1475,20 @@ if [ -d "$REPO_DIR" ]; then
     chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR"
     echo "✓ Qoom application cloned successfully"
     
-    # Copy bundled AIoT kit code to projects folder
-    AIOT_BUNDLE_PATH="/opt/qoom/aiot-code"
-    if [ -d "$AIOT_BUNDLE_PATH" ]; then
+    # Copy AIoT code from cloned repo to projects folder
+    if [ -d "$REPO_DIR/code" ]; then
         echo ""
         echo "Copying AIoT kit code to projects folder..."
         mkdir -p "$REPO_DIR/projects/aiot"
-        cp -r "$AIOT_BUNDLE_PATH/." "$REPO_DIR/projects/aiot/"
+        cp -r "$REPO_DIR/code/." "$REPO_DIR/projects/aiot/"
         chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR/projects/aiot"
         echo "  ✓ AIoT code copied to $REPO_DIR/projects/aiot/"
         
         # List the copied files
         echo "  Files:"
         ls -la "$REPO_DIR/projects/aiot/"
-        
-        # Clean up the bundle
-        rm -rf "$AIOT_BUNDLE_PATH"
     else
-        echo "Note: No bundled AIoT code found at $AIOT_BUNDLE_PATH"
+        echo "Note: No code/ folder found in cloned repository"
     fi
     
     # Step 5: Run the deployment script
