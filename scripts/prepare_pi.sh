@@ -816,13 +816,10 @@ if [ "$OS_TYPE" = "mac" ]; then
             ROOT_MOUNT_FAILED=true
         }
     else
-        echo -e "${YELLOW}Warning: ext4 filesystem support not found on macOS.${NC}"
-        echo "On macOS, you need ext4 support to configure the root partition. Install with:"
-        echo "  brew install macfuse"
-        echo "  brew install ext4fuse"
+        echo -e "${BLUE}Note: Using boot partition method for macOS (ext4 not available)${NC}"
+        echo "All configuration will be applied via firstrun.sh on first boot."
         echo ""
-        echo "The boot partition (SSH, user config) will still be configured."
-        echo "WiFi and first-boot script require root partition access."
+        echo "(Optional: For direct ext4 access, install: brew install macfuse ext4fuse)"
         ROOT_MOUNT_FAILED=true
     fi
 else
@@ -842,10 +839,10 @@ ENCRYPTED_PASSWORD=$(generate_encrypted_password "$PI_PASSWORD")
 echo "${PI_USERNAME}:${ENCRYPTED_PASSWORD}" > "$BOOT_MOUNT/userconf.txt"
 echo "✓ User configured"
 
-# Configure WiFi (requires root partition access)
+# Configure WiFi
 if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-    echo -e "${YELLOW}Skipping WiFi configuration (root partition not mounted)${NC}"
-    echo "WiFi will need to be configured manually on first boot."
+    echo "Using boot partition firstrun.sh method for WiFi configuration..."
+    # WiFi will be configured via firstrun.sh on boot partition (handled in Step 10)
 else
     echo "Configuring WiFi..."
     
@@ -908,9 +905,414 @@ echo "✓ Repository configured"
 # ===================================
 echo ""
 if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-    echo -e "${YELLOW}Step 10: Skipping first-boot script (root partition not mounted)${NC}"
-    echo "The Pi will boot with basic configuration only."
-    echo "You will need to manually set up Qoom after first boot."
+    echo -e "${GREEN}Step 10: Creating first-boot script (boot partition method for macOS)...${NC}"
+    echo "Using Raspberry Pi's firstrun.sh mechanism (same as official Pi Imager)"
+    
+    # Generate a UUID for the WiFi connection (macOS compatible)
+    WIFI_UUID=$(uuidgen 2>/dev/null || cat /dev/urandom | LC_ALL=C tr -dc 'a-f0-9' | head -c 32 | sed 's/\(..\)/\1-/g;s/-$//' | head -c 36)
+    
+    # Create the firstrun.sh script on the boot partition
+    # This is the same approach used by the official Raspberry Pi Imager
+cat > "$BOOT_MOUNT/firstrun.sh" << 'FIRSTRUN_EOF'
+#!/bin/bash
+
+set +e
+
+# Configuration (will be replaced by sed)
+PI_NAME="__PI_NAME__"
+PI_USERNAME="__PI_USERNAME__"
+WIFI_SSID="__WIFI_SSID__"
+WIFI_PASSWORD="__WIFI_PASSWORD__"
+WIFI_COUNTRY="__WIFI_COUNTRY__"
+WIFI_UUID="__WIFI_UUID__"
+
+# Setup logging
+LOG_FILE="/var/log/qoom-firstrun.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "======================================"
+echo "Qoom First-Run Setup - $(date)"
+echo "Pi Name: $PI_NAME"
+echo "======================================"
+
+# Set hostname
+echo "Setting hostname to $PI_NAME..."
+echo "$PI_NAME" > /etc/hostname
+sed -i "s/raspberrypi/$PI_NAME/g" /etc/hosts
+hostnamectl set-hostname "$PI_NAME" 2>/dev/null || true
+echo "✓ Hostname set"
+
+# Configure WiFi
+echo "Configuring WiFi for $WIFI_SSID..."
+mkdir -p /etc/NetworkManager/system-connections
+
+cat > /etc/NetworkManager/system-connections/preconfigured.nmconnection << WIFI_EOF
+[connection]
+id=$WIFI_SSID
+uuid=$WIFI_UUID
+type=wifi
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=$WIFI_SSID
+
+[wifi-security]
+auth-alg=open
+key-mgmt=wpa-psk
+psk=$WIFI_PASSWORD
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+WIFI_EOF
+
+chmod 600 /etc/NetworkManager/system-connections/preconfigured.nmconnection
+echo "✓ WiFi configured"
+
+# Set WiFi country
+echo "Setting WiFi country to $WIFI_COUNTRY..."
+raspi-config nonint do_wifi_country "$WIFI_COUNTRY" 2>/dev/null || true
+iw reg set "$WIFI_COUNTRY" 2>/dev/null || true
+echo "✓ WiFi country set"
+
+# Create the full Qoom setup script
+echo "Creating Qoom setup script..."
+mkdir -p /opt/qoom
+
+cat > /opt/qoom/firstboot-setup.sh << 'QOOM_SCRIPT_EOF'
+__QOOM_SETUP_SCRIPT__
+QOOM_SCRIPT_EOF
+
+chmod +x /opt/qoom/firstboot-setup.sh
+
+# Create systemd service for the full Qoom setup
+cat > /etc/systemd/system/qoom-firstboot.service << 'SERVICE_EOF'
+[Unit]
+Description=Qoom First Boot Setup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/qoom/firstboot-setup.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
+# Enable the Qoom setup service
+systemctl daemon-reload
+systemctl enable qoom-firstboot.service
+
+echo "✓ Qoom setup script installed and enabled"
+
+# Remove firstrun.sh from cmdline.txt (one-time run)
+echo "Cleaning up firstrun configuration..."
+if [ -f /boot/firmware/cmdline.txt ]; then
+    sed -i 's| systemd.run=/boot/firmware/firstrun.sh||g' /boot/firmware/cmdline.txt
+    sed -i 's| systemd.run_success_action=reboot||g' /boot/firmware/cmdline.txt
+    sed -i 's| systemd.unit=kernel-command-line.target||g' /boot/firmware/cmdline.txt
+fi
+
+# Remove this script
+rm -f /boot/firmware/firstrun.sh
+
+echo ""
+echo "First-run setup complete at $(date)"
+echo "The system will now reboot to continue Qoom setup..."
+echo ""
+
+# Trigger reboot to apply hostname and start Qoom setup
+sleep 2
+reboot
+FIRSTRUN_EOF
+
+    # Replace placeholders in firstrun.sh (use macOS-compatible sed)
+    if [ "$OS_TYPE" = "mac" ]; then
+        sed -i '' "s|__PI_NAME__|$PI_NAME|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i '' "s|__PI_USERNAME__|$PI_USERNAME|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i '' "s|__WIFI_SSID__|$WIFI_SSID|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i '' "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i '' "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i '' "s|__WIFI_UUID__|$WIFI_UUID|g" "$BOOT_MOUNT/firstrun.sh"
+    else
+        sed -i "s|__PI_NAME__|$PI_NAME|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i "s|__PI_USERNAME__|$PI_USERNAME|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i "s|__WIFI_SSID__|$WIFI_SSID|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$BOOT_MOUNT/firstrun.sh"
+        sed -i "s|__WIFI_UUID__|$WIFI_UUID|g" "$BOOT_MOUNT/firstrun.sh"
+    fi
+    
+    # Now we need to embed the full Qoom setup script into firstrun.sh
+    # First, create the Qoom setup script content (same as the one used for root partition method)
+    # We'll create it as a separate temp file and then embed it
+    
+    QOOM_SCRIPT_CONTENT=$(cat << 'QOOM_SETUP_CONTENT'
+#!/bin/bash
+# Qoom First-Boot Setup Script
+# This script runs automatically on first boot
+
+# Don't exit on error - we want to continue and log issues
+set +e
+
+# Configuration (will be replaced during firstrun.sh)
+PI_NAME="__PI_NAME__"
+WIFI_SSID="__WIFI_SSID__"
+WIFI_PASSWORD="__WIFI_PASSWORD__"
+
+# Setup logging - log to both /var/log and /boot for easy SD card reading
+LOG_FILE="/var/log/qoom-setup.log"
+BOOT_LOG="/boot/firmware/qoom-setup.log"
+
+# Function to log to both locations
+log_msg() {
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$msg" | tee -a "$LOG_FILE" "$BOOT_LOG" 2>/dev/null || echo "$msg" >> "$LOG_FILE"
+}
+
+# Start logging
+exec > >(while read line; do log_msg "$line"; done) 2>&1
+
+echo "======================================"
+echo "Qoom First-Boot Setup - $(date)"
+echo "Pi Name: $PI_NAME"
+echo "======================================"
+echo ""
+
+# Function to check network connectivity
+check_network() {
+    ping -c 1 -W 3 8.8.8.8 &> /dev/null || ping -c 1 -W 3 1.1.1.1 &> /dev/null
+    return $?
+}
+
+# Function to unblock WiFi (handle RF-kill)
+unblock_wifi() {
+    echo "Checking RF-kill status..."
+    rfkill list 2>&1 || echo "rfkill command not available"
+    
+    echo "Unblocking all wireless devices..."
+    rfkill unblock all 2>&1 || true
+    rfkill unblock wifi 2>&1 || true
+    
+    sleep 2
+    nmcli radio wifi on 2>&1 || true
+}
+
+echo "Starting network connectivity check..."
+unblock_wifi
+
+# Wait for network with retry
+NETWORK_UP=false
+MAX_WAIT=300
+
+echo "Waiting for network connectivity (max ${MAX_WAIT}s)..."
+for ((i=0; i<=MAX_WAIT; i+=10)); do
+    if check_network; then
+        echo "Network is up after ${i} seconds!"
+        NETWORK_UP=true
+        break
+    fi
+    
+    if [ $((i % 30)) -eq 0 ] && [ $i -gt 0 ]; then
+        echo "Still waiting for network... (${i}/${MAX_WAIT}s)"
+    fi
+    
+    # At 2 minutes, try reconnecting
+    if [ $i -eq 120 ]; then
+        echo "Attempting WiFi reconnection..."
+        nmcli connection reload
+        nmcli connection up "$WIFI_SSID" 2>&1 || true
+    fi
+    
+    sleep 10
+done
+
+if [ "$NETWORK_UP" = false ]; then
+    echo "WARNING: Network connection failed after ${MAX_WAIT}s"
+    echo "Continuing anyway - some steps may fail"
+fi
+
+# Wait for NTP time sync
+echo "Waiting for system clock to synchronize..."
+timedatectl set-ntp true 2>/dev/null || true
+NTP_WAIT=0
+while [ $NTP_WAIT -lt 60 ]; do
+    CURRENT_YEAR=$(date +%Y)
+    if [ "$CURRENT_YEAR" -ge 2025 ]; then
+        echo "Clock synchronized: $(date)"
+        break
+    fi
+    sleep 5
+    NTP_WAIT=$((NTP_WAIT + 5))
+done
+
+# Get current user
+SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" | head -1)
+SETUP_HOME="/home/$SETUP_USER"
+
+echo "Running setup for user: $SETUP_USER"
+echo "Home directory: $SETUP_HOME"
+
+# Install Node.js using nvm
+echo ""
+echo "Installing Node.js 24 using nvm..."
+
+export NVM_DIR="$SETUP_HOME/.nvm"
+
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep -oP '"tag_name": "\K[^"]+' || echo "v0.40.1")
+    echo "Installing nvm $NVM_VERSION..."
+    sudo -u "$SETUP_USER" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash"
+fi
+
+sudo -u "$SETUP_USER" bash -c "
+    export NVM_DIR='$NVM_DIR'
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+    nvm install 24
+    nvm alias default 24
+    echo \"Node.js installed: \$(node -v)\"
+"
+echo "✓ Node.js installed"
+
+# Install PM2
+echo "Installing PM2..."
+sudo -u "$SETUP_USER" bash -c "
+    export NVM_DIR='$NVM_DIR'
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+    npm install -g pm2
+"
+echo "✓ PM2 installed"
+
+# Install Git and build tools
+echo "Installing Git and build tools..."
+apt-get update
+apt-get install -y git build-essential python3 make g++ 2>&1 || true
+apt-get install -y libcap-dev python3-dev python3-libcamera python3-picamera2 libcamera-dev 2>&1 || true
+
+# Install uv
+echo "Installing uv..."
+sudo -u "$SETUP_USER" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh' 2>&1 || true
+echo "✓ Dependencies installed"
+
+# Clone Qoom application
+echo "Cloning Qoom application..."
+REPO_DIR="$SETUP_HOME/qoom"
+REPO_URL="https://github.com/Qoomio/AIoT.git"
+
+rm -rf "$REPO_DIR" 2>/dev/null || true
+sudo -u "$SETUP_USER" git clone "$REPO_URL" "$REPO_DIR" 2>&1
+
+if [ -d "$REPO_DIR" ]; then
+    chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR"
+    echo "✓ Qoom application cloned"
+    
+    # Copy AIoT code
+    if [ -d "$REPO_DIR/code" ]; then
+        mkdir -p "$REPO_DIR/projects/aiot"
+        cp -r "$REPO_DIR/code/." "$REPO_DIR/projects/aiot/"
+        chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR/projects/aiot"
+        echo "✓ AIoT code copied"
+    fi
+    
+    # Deploy application
+    echo "Deploying application..."
+    sudo -u "$SETUP_USER" bash -c "
+        export NVM_DIR='$NVM_DIR'
+        export NODE_ENV='education'
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+        cd '$REPO_DIR'
+        npm install
+        pm2 delete aiot 2>/dev/null || true
+        pm2 start ecosystem.config.cjs
+        pm2 save
+    "
+    echo "✓ Application deployed"
+    
+    # Configure PM2 startup
+    echo "Configuring PM2 auto-start..."
+    PM2_STARTUP=$(sudo -u "$SETUP_USER" bash -c "
+        export NVM_DIR='$NVM_DIR'
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+        pm2 startup systemd -u $SETUP_USER --hp $SETUP_HOME 2>&1
+    " | grep "sudo env" || true)
+    
+    if [ -n "$PM2_STARTUP" ]; then
+        eval "$PM2_STARTUP" || true
+    fi
+    
+    sudo -u "$SETUP_USER" bash -c "
+        export NVM_DIR='$NVM_DIR'
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+        pm2 save
+    "
+    echo "✓ PM2 startup configured"
+else
+    echo "ERROR: Failed to clone repository"
+fi
+
+# Cleanup
+systemctl disable qoom-firstboot.service 2>/dev/null || true
+
+LOCAL_IP=$(hostname -I | awk '{print $1}')
+
+echo ""
+echo "======================================"
+echo "Qoom Setup Complete!"
+echo "======================================"
+echo ""
+echo "Access your Pi:"
+echo "  Web: http://${LOCAL_IP}:3000"
+echo "  SSH: ssh $SETUP_USER@${LOCAL_IP}"
+echo ""
+echo "Setup completed at: $(date)"
+QOOM_SETUP_CONTENT
+)
+    
+    # Escape the script content for sed replacement and write to temp file
+    # We need to replace the placeholder in firstrun.sh with the actual script
+    TEMP_QOOM_SCRIPT=$(mktemp)
+    echo "$QOOM_SCRIPT_CONTENT" > "$TEMP_QOOM_SCRIPT"
+    
+    # Replace placeholders in the Qoom script content (use macOS-compatible sed)
+    if [ "$OS_TYPE" = "mac" ]; then
+        sed -i '' "s|__PI_NAME__|$PI_NAME|g" "$TEMP_QOOM_SCRIPT"
+        sed -i '' "s|__WIFI_SSID__|$WIFI_SSID|g" "$TEMP_QOOM_SCRIPT"
+        sed -i '' "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$TEMP_QOOM_SCRIPT"
+    else
+        sed -i "s|__PI_NAME__|$PI_NAME|g" "$TEMP_QOOM_SCRIPT"
+        sed -i "s|__WIFI_SSID__|$WIFI_SSID|g" "$TEMP_QOOM_SCRIPT"
+        sed -i "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$TEMP_QOOM_SCRIPT"
+    fi
+    
+    # Now embed the Qoom script into firstrun.sh
+    # Use awk to replace the placeholder with file contents
+    awk -v script="$(cat "$TEMP_QOOM_SCRIPT")" '{gsub(/__QOOM_SETUP_SCRIPT__/, script); print}' "$BOOT_MOUNT/firstrun.sh" > "$BOOT_MOUNT/firstrun.sh.tmp"
+    mv "$BOOT_MOUNT/firstrun.sh.tmp" "$BOOT_MOUNT/firstrun.sh"
+    
+    rm -f "$TEMP_QOOM_SCRIPT"
+    
+    chmod +x "$BOOT_MOUNT/firstrun.sh"
+    
+    # Modify cmdline.txt to run firstrun.sh on boot
+    echo "Modifying cmdline.txt to run firstrun.sh on first boot..."
+    if [ -f "$BOOT_MOUNT/cmdline.txt" ]; then
+        # Read current cmdline and append the firstrun parameters
+        CURRENT_CMDLINE=$(cat "$BOOT_MOUNT/cmdline.txt" | tr -d '\n')
+        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target" > "$BOOT_MOUNT/cmdline.txt"
+        echo "✓ cmdline.txt modified"
+    else
+        echo -e "${YELLOW}Warning: cmdline.txt not found at expected location${NC}"
+    fi
+    
+    echo "✓ First-boot setup script created (boot partition method)"
+
 else
     echo -e "${GREEN}Step 10: Creating first-boot setup script...${NC}"
 
@@ -1751,7 +2153,7 @@ Useful commands:
   pm2 restart all             - Restart the application
 EOF
 
-chown "$REAL_USER:$REAL_USER" "$CREDS_FILE"
+chown "$REAL_USER" "$CREDS_FILE"
 
 echo ""
 echo -e "${BLUE}================================================${NC}"
@@ -1790,16 +2192,10 @@ echo ""
 # Platform-specific notes
 if [ "$OS_TYPE" = "mac" ]; then
     if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-        echo -e "${YELLOW}⚠️  macOS Limitation:${NC}"
-        echo "The root partition (ext4) could not be mounted for full configuration."
-        echo "Basic setup (SSH, user) is configured, but WiFi and Qoom auto-setup are not."
+        echo -e "${GREEN}✓ Full configuration completed on macOS (using firstrun.sh method)${NC}"
         echo ""
-        echo "After first boot, you will need to:"
-        echo "  1. Connect the Pi via ethernet or configure WiFi manually"
-        echo "  2. SSH into the Pi and run the Qoom setup manually"
-        echo ""
-        echo "To enable full macOS support, install ext4 tools:"
-        echo "  brew install macfuse && brew install ext4fuse"
+        echo "Note: Since macOS cannot mount ext4 partitions, configuration was placed"
+        echo "on the boot partition and will be applied automatically on first boot."
         echo ""
     else
         echo -e "${GREEN}✓ Full configuration completed on macOS${NC}"
