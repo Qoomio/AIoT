@@ -57,6 +57,7 @@
 	opacity: 0.7;
 	transition: all 0.2s;
 }
+.code-fold-btn:hover,
 .search-tab-btn:hover,
 .goto-line-btn:hover,
 .search-btn:hover,

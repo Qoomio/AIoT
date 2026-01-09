@@ -5,12 +5,12 @@ class Context {
 
     }
 
-    showDirectoryMenu(event, path) {
-        qoomEvent.emit('showExplorerContextMenu', { event, path, isDirectory: true });
+    showDirectoryMenu(event, path, selection) {
+        qoomEvent.emit('showExplorerContextMenu', { event, path, isDirectory: true, selection });
     }
 
-    showFileMenu(event, path) {
-        qoomEvent.emit('showExplorerContextMenu', { event, path, isDirectory: false });
+    showFileMenu(event, path, selection) {
+        qoomEvent.emit('showExplorerContextMenu', { event, path, isDirectory: false, selection });
     }
 
     showTabMenu(event, paneId, tabId, filePath) {

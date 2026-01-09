@@ -267,143 +267,160 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
     showContextMenu(event, menuItems, 'tab-context-menu');
 }
 
-function showExplorerContextMenu(event, path, isDirectory) {
+function showExplorerContextMenu(event, path, isDirectory, selection) {
+    const selectionCount = selection ? selection.length : 0;
     const itemType = isDirectory ? 'Folder' : 'File';
     
-    let menuItems = [
-        {
-            icon: '✏️',
-            text: `Rename ${itemType}`,
-            handler: () => {
-                removeContextMenu();
-                if (isDirectory) {
-                    state.explorer.renameDirectory(path);
-                } else {
-                    state.explorer.renameFile(path);
-                }
-            }
-        },
-        {
-            icon: '📋',
-            text: `Duplicate ${itemType}`,
-            handler: () => {
-                removeContextMenu();
-                if (isDirectory) {
-                    state.explorer.duplicateDirectory(path);
-                } else {
-                    state.explorer.duplicateFile(path);
-                }
-            }
-        },
-        { type: 'separator' },
-        {
-            icon: '💻',
-            text: 'Open in Terminal',
-            handler: async () => {
-                removeContextMenu();
-                const root = await getWorkspaceRoot();
-                state.explorer.openInTerminal(path, isDirectory, root);
-            }
-        },
-        { type: 'separator' },
-        {
-            icon: '📄',
-            text: 'Copy Relative Path',
-            handler: () => {
-                removeContextMenu();
-                copyRelativePath(path);
-            }
-        },
-        {
-            icon: '🔗',
-            text: 'Copy Absolute Path',
-            handler: () => {
-                removeContextMenu();
-                copyAbsolutePath(path);
-            }
-        }
-    ];
-    
-    if (isDirectory) {
-        menuItems.push(
-            { type: 'separator' },
+    let menuItems = [];
+
+    if (selectionCount > 1) {
+        menuItems = [
             {
-                icon: '📤',
-                text: 'Upload Files',
+                icon: '🗑️',
+                text: `Delete ${selectionCount} Items`,
+                className: 'delete-item',
                 handler: () => {
                     removeContextMenu();
-                    state.explorer.uploadFiles(path);
+                    qoomEvent.emit('deleteMultiple', { selection });
+                }
+            }
+        ];
+    } else {
+        menuItems = [
+            {
+                icon: '✏️',
+                text: `Rename ${itemType}`,
+                handler: () => {
+                    removeContextMenu();
+                    if (isDirectory) {
+                        state.explorer.renameDirectory(path);
+                    } else {
+                        state.explorer.renameFile(path);
+                    }
                 }
             },
             {
-                icon: '📂',
-                text: 'Upload Folder',
+                icon: '📋',
+                text: `Duplicate ${itemType}`,
                 handler: () => {
                     removeContextMenu();
-                    state.explorer.uploadFolder(path);
+                    if (isDirectory) {
+                        state.explorer.duplicateDirectory(path);
+                    } else {
+                        state.explorer.duplicateFile(path);
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                icon: '💻',
+                text: 'Open in Terminal',
+                handler: async () => {
+                    removeContextMenu();
+                    const root = await getWorkspaceRoot();
+                    state.explorer.openInTerminal(path, isDirectory, root);
                 }
             },
             { type: 'separator' },
             {
                 icon: '📄',
-                text: 'New File',
+                text: 'Copy Relative Path',
                 handler: () => {
                     removeContextMenu();
-                    state.explorer.createFile(path);
+                    copyRelativePath(path);
                 }
             },
             {
-                icon: '📁',
-                text: 'New Folder',
+                icon: '🔗',
+                text: 'Copy Absolute Path',
                 handler: () => {
                     removeContextMenu();
-                    state.explorer.createFolder(path);
+                    copyAbsolutePath(path);
                 }
             }
-        );
-    } else {
+        ];
+        
+        if (isDirectory) {
+            menuItems.push(
+                { type: 'separator' },
+                {
+                    icon: '📤',
+                    text: 'Upload Files',
+                    handler: () => {
+                        removeContextMenu();
+                        state.explorer.uploadFiles(path);
+                    }
+                },
+                {
+                    icon: '📂',
+                    text: 'Upload Folder',
+                    handler: () => {
+                        removeContextMenu();
+                        state.explorer.uploadFolder(path);
+                    }
+                },
+                { type: 'separator' },
+                {
+                    icon: '📄',
+                    text: 'New File',
+                    handler: () => {
+                        removeContextMenu();
+                        state.explorer.createFile(path);
+                    }
+                },
+                {
+                    icon: '📁',
+                    text: 'New Folder',
+                    handler: () => {
+                        removeContextMenu();
+                        state.explorer.createFolder(path);
+                    }
+                }
+            );
+        } else {
+            menuItems.push(
+                { type: 'separator' },
+                {
+                    icon: '👁️',
+                    text: 'View File',
+                    handler: () => {
+                        removeContextMenu();
+                        viewFile(path);
+                    }
+                }
+            );
+        }
+        
         menuItems.push(
             { type: 'separator' },
             {
-                icon: '👁️',
-                text: 'View File',
+                icon: '💾',
+                text: `Download ${itemType}`,
                 handler: () => {
                     removeContextMenu();
-                    viewFile(path);
+                    if (isDirectory) {
+                        state.explorer.downloadDirectory(path);
+                    } else {
+                        state.explorer.downloadFile(path);
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                icon: '🗑️',
+                text: `Delete ${itemType}`,
+                className: 'delete-item',
+                handler: () => {
+                    removeContextMenu();
+                    if (isDirectory) {
+                        state.explorer.deleteDirectory(path);
+                    } else {
+                        state.explorer.deleteFile(path);
+                    }
                 }
             }
         );
     }
-    
-    menuItems.push(
-        { type: 'separator' },
-        {
-            icon: '💾',
-            text: `Download ${itemType}`,
-            handler: () => {
-                removeContextMenu();
-                if (isDirectory) {
-                    state.explorer.downloadDirectory(path);
-                } else {
-                    state.explorer.downloadFile(path);
-                }
-            }
-        },
-        { type: 'separator' },
-        {
-            icon: '🗑️',
-            text: `Delete ${itemType}`,
-            className: 'delete-item',
-            handler: () => {
-                removeContextMenu();
-                if (isDirectory) {
-                    state.explorer.deleteDirectory(path);
-                } else {
-                    state.explorer.deleteFile(path);
-                }
-            }
-        }
-    );
     
     showContextMenu(event, menuItems, 'explorer-context-menu');
 }
@@ -457,8 +474,8 @@ async function initialize(_state) {
     });
     
     qoomEvent.on('showExplorerContextMenu', (e) => {
-        const { event, path, isDirectory } = e.detail;
-        showExplorerContextMenu(event, path, isDirectory);
+        const { event, path, isDirectory, selection } = e.detail;
+        showExplorerContextMenu(event, path, isDirectory, selection);
     });
 }
 

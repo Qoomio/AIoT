@@ -14,10 +14,12 @@ const dom = {
         splitVertical: [],
         splitHorizontal: [],
         close: [],
+        codeFold: [], // fold/unfold all
     }
 }
 
 let state;
+const foldState = {}; //paneId -> boolean
 
 function handleTabContentLoaded(e) {
     const tab = e.detail;
@@ -48,6 +50,23 @@ function updatePaneOptions(e) {
     }
     dom.panes[paneId].editor.updateOptions(options);
 }
+
+function toggleCodeFold(paneId) {
+  const editor = getActiveEditor();
+  if (!editor) return;
+
+  const isFolded = foldState[paneId] ?? false;
+
+  editor.focus();
+  editor.trigger(
+    "keyboard",
+    isFolded ? "editor.unfoldAll" : "editor.foldAll",
+    null
+  );
+
+  foldState[paneId] = !isFolded;
+}
+
 
 function beautify(paneId) {
     const $pane = dom.panes[paneId];
@@ -184,6 +203,11 @@ function addEventListeners() {
     dom.buttons.close.forEach(($button, i) => {
         $button.addEventListener('click', () => close(i))
     })
+    // connect folding button
+    dom.buttons.codeFold.forEach(($button, i) => {
+        if (!$button) return;
+        $button.addEventListener("click", () => toggleCodeFold(i));
+  })
 }
 
 async function loadMonacoEditor() {
@@ -197,6 +221,7 @@ async function loadMonacoEditor() {
         minimap: { enabled: true },
         scrollBeyondLastLine: false,
         wordWrap: "on",
+        folding: true,
     };
 
     try {
@@ -307,6 +332,7 @@ async function injectHTML() {
             dom.buttons.splitVertical.push($pane.querySelector('.split-vertical-btn'))
             dom.buttons.splitHorizontal.push($pane.querySelector('.split-horizontal-btn'))
             dom.buttons.close.push($pane.querySelector('.close-pane-btn'))
+            dom.buttons.codeFold.push($pane.querySelector(".code-fold-btn"))
         })
 	} catch (error) {
 		console.error("Failed to load panes template:", error);

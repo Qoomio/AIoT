@@ -20,6 +20,7 @@ let state = null;
 let currentTab = 'explorer';
 let dragCounter = 0;
 let contextMenuTargetFolder = null;
+let selectionAnchorPath = null;
 
 function getFileTreeScope() {
     return document.getElementById('file-tree') || document;
@@ -1033,10 +1034,39 @@ function handleTreeClick(e) {
     const path = fileItem.getAttribute('data-path');
     const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
     
-    if (isDirectory) {
-        toggleDirectory(fileItem, path);
+    const allFileItems = Array.from(getFileTreeScope().querySelectorAll('.file-item'));
+
+    if (e.shiftKey && selectionAnchorPath) {
+        const anchorIndex = allFileItems.findIndex(item => item.getAttribute('data-path') === selectionAnchorPath);
+        const currentIndex = allFileItems.indexOf(fileItem);
+
+        if (anchorIndex !== -1 && currentIndex !== -1) {
+            allFileItems.forEach(item => item.classList.remove('active'));
+            const start = Math.min(anchorIndex, currentIndex);
+            const end = Math.max(anchorIndex, currentIndex);
+            for (let i = start; i <= end; i++) {
+                allFileItems[i].classList.add('active');
+            }
+        }
+    } else if (e.ctrlKey || e.metaKey) {
+        fileItem.classList.toggle('active');
+        if (fileItem.classList.contains('active')) {
+            selectionAnchorPath = path;
+        } else if (selectionAnchorPath === path) {
+            const firstActive = allFileItems.find(item => item.classList.contains('active'));
+            selectionAnchorPath = firstActive ? firstActive.getAttribute('data-path') : null;
+        }
     } else {
-        openFileInEditor(path);
+        // Normal click
+        allFileItems.forEach(item => item.classList.remove('active'));
+        fileItem.classList.add('active');
+        selectionAnchorPath = path;
+
+        if (isDirectory) {
+            toggleDirectory(fileItem, path);
+        } else {
+            openFileInEditor(path);
+        }
     }
 }
 
@@ -1045,13 +1075,27 @@ function handleTreeContextMenu(e) {
     if (!fileItem) return;
     
     e.preventDefault();
+
+    if (!fileItem.classList.contains('active')) {
+        const allFileItems = Array.from(getFileTreeScope().querySelectorAll('.file-item'));
+        allFileItems.forEach(item => item.classList.remove('active'));
+        fileItem.classList.add('active');
+        selectionAnchorPath = fileItem.getAttribute('data-path');
+    }
+
+    const selectedItems = Array.from(getFileTreeScope().querySelectorAll('.file-item.active'));
+    const selection = selectedItems.map(item => ({
+        path: item.getAttribute('data-path'),
+        isDirectory: item.getAttribute('data-is-directory') === 'true'
+    }));
+
     const path = fileItem.getAttribute('data-path');
     const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
     
     if (isDirectory) {
-        state.context.showDirectoryMenu(e, path)
+        state.context.showDirectoryMenu(e, path, selection);
     } else {
-        state.context.showFileMenu(e, path)
+        state.context.showFileMenu(e, path, selection);
     }
 }
 
@@ -1071,6 +1115,12 @@ function handleTreeKeydown(e) {
     } else if (e.key === 'd' && e.ctrlKey) {
         e.preventDefault();
         confirmDuplicate(path, isDirectory);
+    }
+}
+
+function handleTreeMouseDown(e) {
+    if (e.shiftKey) {
+        e.preventDefault();
     }
 }
 
@@ -1187,6 +1237,16 @@ async function performDelete(path, isDirectory, recursive = false) {
         }
     } catch (error) {
         alert(`Error deleting ${isDirectory ? 'folder' : 'file'}: ${error.message}`);
+    }
+}
+
+async function confirmDeleteMultiple(selection) {
+    const message = `Are you sure you want to permanently delete these ${selection.length} items?`;
+    if (confirm(message)) {
+        for (const item of selection) {
+            await performDelete(item.path, item.isDirectory, item.isDirectory, false);
+        }
+        await refreshFileTree();
     }
 }
 
@@ -1627,6 +1687,17 @@ function setupModalEvents() {
                 this.textContent = 'Create File';
             }
         });
+
+        const fileNameInput = document.getElementById('file-name');
+            if (fileNameInput && createFileSubmit) {
+                fileNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createFileSubmit.click();
+            }
+        });
+    }
+
     }
     const createFolderBtn = document.getElementById('create-folder-btn');
     const createFolderClose = document.getElementById('create-folder-close');
@@ -1847,7 +1918,12 @@ function setupExplorerContextMenuEvents() {
 
     qoomEvent.on('uploadFiles', (e) => {
         uploadFilesToFolder(e.detail);
-    });contextMenu:
+    });
+
+    qoomEvent.on('deleteMultiple', (e) => {
+        const { selection } = e.detail;
+        confirmDeleteMultiple(selection);
+    });
 
     qoomEvent.on('uploadFolder', (e) => {
         uploadFolderToFolder(e.detail);

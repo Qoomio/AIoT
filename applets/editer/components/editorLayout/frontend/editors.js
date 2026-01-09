@@ -370,13 +370,41 @@ function handleSyncMessage(message) {
 			break;
 
 		case "file_changed":
-			state.layout.panes.forEach(pane => {
+			state.layout.panes.forEach((pane, paneIndex) => {
 				pane.tabs.forEach(tab => {
 					const normalizedTabPath = normalizePath(tab.filePath);
 					const normalizedEventPath = normalizePath(filePath);
 					if (normalizedTabPath === normalizedEventPath && !tab.modified) {
 						console.log("[SYNC] Updating content for:", tab.filePath);
+						
+						// Get the DOM pane element to access the Monaco editor
+						const $pane = document.querySelector(`.editor-pane[data-pane="${paneIndex}"]`);
+						const editor = $pane?.editor;
+						
+						// Only preserve cursor if this tab is the active tab in this pane
+						// and the editor exists
+						let position = null;
+						let selection = null;
+						if (editor && pane.activeTab?.id === tab.id) {
+							position = editor.getPosition();
+							selection = editor.getSelection();
+						}
+						
+						// Update content (this resets cursor position)
 						tab.content = content;
+						
+						// Restore cursor position if we saved it
+						if (editor && position) {
+							try {
+								editor.setPosition(position);
+								if (selection) {
+									editor.setSelection(selection);
+								}
+							} catch (e) {
+								// Position no longer valid (e.g., file got shorter)
+								console.log("[SYNC] Could not restore cursor position:", e);
+							}
+						}
 					}
 				})
 			})
