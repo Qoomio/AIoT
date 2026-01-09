@@ -8,8 +8,8 @@
 REPO_URL="https://github.com/Qoomio/AIoT.git"
 
 {
-    if [[ "$NODE_ENV" != "aiot" && "$NODE_ENV" != "AIOT" ]]; then
-        echo "Aborting deployment: NODE_ENV is not 'aiot'. Current NODE_ENV='$NODE_ENV'"
+    if [[ "$NODE_ENV" != "education" && "$NODE_ENV" != "EDUCATION" ]]; then
+        echo "Aborting deployment: NODE_ENV is not 'education'. Current NODE_ENV='$NODE_ENV'"
         exit 1
     fi
     echo "Starting deployment process..."
