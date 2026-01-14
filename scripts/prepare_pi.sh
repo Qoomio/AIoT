@@ -646,9 +646,63 @@ else
         exit 1
     fi
 
-    if ! command -v xz &> /dev/null; then
-        echo "Installing xz-utils..."
-        apt-get update && apt-get install -y xz-utils
+    # Function to decompress XZ files - uses native Python on macOS as fallback
+    decompress_xz() {
+        local xz_file="$1"
+        local output_file="${xz_file%.xz}"
+        
+        if command -v xz &> /dev/null; then
+            xz -d "$xz_file"
+        elif command -v python3 &> /dev/null; then
+            echo "Using Python to decompress (xz command not installed)..."
+            echo "This may take a few minutes for large files..."
+            python3 -c "
+import lzma
+import sys
+import os
+
+xz_path = '$xz_file'
+out_path = '$output_file'
+file_size = os.path.getsize(xz_path)
+bytes_read = 0
+last_percent = -1
+
+with lzma.open(xz_path, 'rb') as f_in:
+    with open(out_path, 'wb') as f_out:
+        while True:
+            chunk = f_in.read(4 * 1024 * 1024)  # 4MB chunks
+            if not chunk:
+                break
+            f_out.write(chunk)
+            bytes_read += len(chunk)
+            # Estimate progress (compressed vs uncompressed ratio ~3-4x)
+            percent = min(99, int(bytes_read * 3.5 / file_size * 100))
+            if percent != last_percent and percent % 10 == 0:
+                print(f'  Decompressing... {percent}%', flush=True)
+                last_percent = percent
+print('  Decompressing... 100%')
+" && rm -f "$xz_file"
+        else
+            echo -e "${RED}Error: Neither xz nor python3 found for decompression${NC}"
+            echo "Please install xz:"
+            if [ "$OS_TYPE" = "mac" ]; then
+                echo "  brew install xz"
+            else
+                echo "  sudo apt-get install xz-utils"
+            fi
+            exit 1
+        fi
+    }
+
+    # Check for xz or python3 for decompression
+    if ! command -v xz &> /dev/null && ! command -v python3 &> /dev/null; then
+        echo -e "${RED}Error: Need either xz or python3 for decompression${NC}"
+        if [ "$OS_TYPE" = "mac" ]; then
+            echo "macOS should have python3 pre-installed. Please check your system."
+        else
+            echo "Installing xz-utils..."
+            apt-get update && apt-get install -y xz-utils
+        fi
     fi
 
     # Function to get the pinned December 4, 2025 Trixie image URL
@@ -742,7 +796,7 @@ else
         
         echo ""
         echo "Extracting image (this may take a few minutes for desktop image)..."
-        xz -d "$IMAGE_XZ_PATH"
+        decompress_xz "$IMAGE_XZ_PATH"
         
         echo "✓ Image downloaded and extracted: $IMAGE_PATH"
     fi
