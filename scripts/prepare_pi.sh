@@ -1848,7 +1848,12 @@ Useful commands:
   pm2 restart all             - Restart the application
 EOF
 
-chown "$REAL_USER:$REAL_USER" "$CREDS_FILE"
+# Set file ownership (macOS uses different group format than Linux)
+if [ "$OS_TYPE" = "mac" ]; then
+    chown "$REAL_USER" "$CREDS_FILE"
+else
+    chown "$REAL_USER:$REAL_USER" "$CREDS_FILE"
+fi
 
 echo ""
 echo -e "${BLUE}================================================${NC}"
