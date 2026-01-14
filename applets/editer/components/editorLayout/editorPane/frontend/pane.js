@@ -119,7 +119,6 @@ function render(tab) {
     const pane = state.layout.panes.find(pane => pane.id === tab.paneId);
     if (!pane) return;
 
-
     const $paneContainers = [...$pane.querySelectorAll('.pane-container')];
     $paneContainers.forEach($container => {
         $container.style.display = 'none'
@@ -155,8 +154,10 @@ function render(tab) {
         throw new Error(`${pane.mode} is unrecognized`);
     }
 
-    const $targetContainer = $paneContainers.find($container => 
+    const $targetContainer = $paneContainers.find($container =>
+        
         $container.classList.contains(targetClass)
+        
     );
     const $renderContainer = $paneContainers.find($container => 
         $container.classList.contains(modeClassMap.renderer)
@@ -164,16 +165,37 @@ function render(tab) {
     
     if ($targetContainer) {
         $targetContainer.style.display = '';
+        
         if (pane.mode === 'editor') {
-            $pane.editor.setModel(tab.model);
+            const model = tab.model;
+            if (model) {
+                // 1. Determine language based on file extension
+                const ext = tab.filePath.split('.').pop().toLowerCase();
+                const langMap = {
+                    'html': 'html', 'htm': 'html',
+                    'css': 'css',
+                    'js': 'javascript', 'py': 'python', 'json': 'json'
+                };
+                const language = langMap[ext] || 'plaintext';
+
+                // 2. [Fix] Check and reset language using getLanguageId()
+                if (model.getLanguageId() !== language) {
+                    window.monaco.editor.setModelLanguage(model, language);
+                }
+
+                // 3. [Add] Actually bind the model to the editor (required for rendering)
+                $pane.editor.setModel(model);
+            }
         } 
+        
         if (pane.mode === 'renderer') {
-            $targetContainer.innerHTML = `<iframe src='/render/${tab.filePath}'></iframe>`
+            $targetContainer.innerHTML = `<iframe src='/render/${tab.filePath}'></iframe>`;
         } else {
-            $renderContainer.innerHTML = '';
+            if ($renderContainer) $renderContainer.innerHTML = '';
         }
     }
 }
+
 
 function addEventListeners() {
     qoomEvent.on('showPaneLoadingMessage', handleTabContentLoading);
@@ -222,6 +244,8 @@ async function loadMonacoEditor() {
         scrollBeyondLastLine: false,
         wordWrap: "on",
         folding: true,
+        foldingStrategy: 'indentation', // Useful when HTML/CSS structure becomes complex
+        showFoldingControls: 'always' // Make the code folding button visible for all file types
     };
 
     try {

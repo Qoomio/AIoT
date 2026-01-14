@@ -171902,12 +171902,28 @@ function render(tab) {
   if ($targetContainer) {
     $targetContainer.style.display = "";
     if (pane.mode === "editor") {
-      $pane.editor.setModel(tab.model);
+      const model = tab.model;
+      if (model) {
+        const ext = tab.filePath.split(".").pop().toLowerCase();
+        const langMap = {
+          "html": "html",
+          "htm": "html",
+          "css": "css",
+          "js": "javascript",
+          "py": "python",
+          "json": "json"
+        };
+        const language2 = langMap[ext] || "plaintext";
+        if (model.getLanguageId() !== language2) {
+          window.monaco.editor.setModelLanguage(model, language2);
+        }
+        $pane.editor.setModel(model);
+      }
     }
     if (pane.mode === "renderer") {
       $targetContainer.innerHTML = `<iframe src='/render/${tab.filePath}'></iframe>`;
     } else {
-      $renderContainer.innerHTML = "";
+      if ($renderContainer) $renderContainer.innerHTML = "";
     }
   }
 }
@@ -171955,7 +171971,11 @@ function loadMonacoEditor() {
       minimap: { enabled: true },
       scrollBeyondLastLine: false,
       wordWrap: "on",
-      folding: true
+      folding: true,
+      foldingStrategy: "indentation",
+      // Useful when HTML/CSS structure becomes complex
+      showFoldingControls: "always"
+      // Make the code folding button visible for all file types
     };
     try {
       const response = yield fetch("/edit/_api/monaco/settings");

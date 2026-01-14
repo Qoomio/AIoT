@@ -8,7 +8,7 @@
 #   - macOS (requires ext4fuse for full support, basic support without it)
 #   - Windows (via WSL - Windows Subsystem for Linux)
 #
-# IMAGE: Raspberry Pi OS (64-bit) with Desktop - based on Debian Trixie
+# IMAGE: Raspberry Pi OS (64-bit) with Desktop - Debian Trixie (December 2025 release)
 #
 # SUPPORTED MODELS:
 #   - Raspberry Pi 5 (all variants)
@@ -320,9 +320,13 @@ generate_encrypted_password() {
 
 # Configuration
 CACHE_DIR="$HOME/.cache/qoom-pi-images"
-# We'll fetch the latest image URL dynamically
 # Using full Raspberry Pi OS (64-bit) with desktop - based on Debian Trixie
+# Pinned to December 2025 release for stability
 IMAGE_BASE_URL="https://downloads.raspberrypi.com/raspios_arm64/images/"
+# December 2025 Trixie release (pinned version)
+TARGET_IMAGE_DATE="2025-12-04"
+TARGET_IMAGE_DIR="raspios_arm64-${TARGET_IMAGE_DATE}"
+TARGET_IMAGE_FILE="${TARGET_IMAGE_DATE}-raspios-trixie-arm64.img.xz"
 IMAGE_NAME="raspios-trixie-arm64.img"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -628,8 +632,9 @@ else
     echo ""
     echo -e "${GREEN}Step 6: Checking for Raspberry Pi OS image...${NC}"
     echo ""
-    echo "This script downloads Raspberry Pi OS (64-bit) with Desktop"
-    echo "Based on Debian Trixie (Debian 13)"
+    echo "This script uses Raspberry Pi OS (64-bit) with Desktop"
+    echo "Pinned version: December 2025 Trixie (Debian 13)"
+    echo "Image date: ${TARGET_IMAGE_DATE}"
     echo "Compatible with: Raspberry Pi 5, Pi 4, Pi 3 (64-bit), Pi Zero 2 W"
     echo ""
 
@@ -646,40 +651,30 @@ else
         apt-get update && apt-get install -y xz-utils
     fi
 
-    # Function to fetch the latest image URL dynamically
+    # Function to get the pinned December 4, 2025 Trixie image URL
+    # This function ONLY returns the pinned version - no fallbacks to other versions
     # Returns only the URL to stdout, debug messages go to stderr
-    fetch_latest_image_url() {
-        echo "Fetching latest Raspberry Pi OS image information..." >&2
+    get_pinned_image_url() {
+        echo "Using pinned Raspberry Pi OS Trixie (2025-12-04) image..." >&2
         
-        # Get the directory listing and find the latest image folder
-        # Try Trixie first, then fall back to latest available
-        LATEST_DIR=$(curl -sL "$IMAGE_BASE_URL" | grep -oP 'raspios_arm64-\d{4}-\d{2}-\d{2}' | sort -V | tail -1)
+        # Use the exact pinned December 4, 2025 Trixie release - no other versions
+        PINNED_URL="${IMAGE_BASE_URL}${TARGET_IMAGE_DIR}/${TARGET_IMAGE_FILE}"
         
-        if [ -z "$LATEST_DIR" ]; then
-            echo -e "${YELLOW}Warning: Could not fetch latest image list, using fallback URL${NC}" >&2
-            # Fallback to known working URL - Raspberry Pi OS (64-bit) with Desktop
-            echo "https://downloads.raspberrypi.com/raspios_arm64/images/raspios_arm64-2024-11-19/2024-11-19-raspios-bookworm-arm64.img.xz"
-            return
+        # Verify the pinned URL is accessible
+        echo "Verifying image availability at: ${PINNED_URL}" >&2
+        if curl -sI --head --fail "$PINNED_URL" >/dev/null 2>&1; then
+            echo "Found: ${TARGET_IMAGE_DIR} (trixie - 2025-12-04)" >&2
+            echo "$PINNED_URL"
+            return 0
         fi
         
-        # Extract the date from the directory name
-        IMAGE_DATE=$(echo "$LATEST_DIR" | grep -oP '\d{4}-\d{2}-\d{2}')
-        
-        # Determine the OS codename (trixie or bookworm) based on the date
-        # Trixie images started appearing in late 2024
-        # Try to detect from the actual filename on the server
-        IMAGE_LIST_PAGE=$(curl -sL "${IMAGE_BASE_URL}${LATEST_DIR}/")
-        
-        if echo "$IMAGE_LIST_PAGE" | grep -q "trixie"; then
-            OS_CODENAME="trixie"
-        else
-            OS_CODENAME="bookworm"
-        fi
-        
-        echo "Found: ${LATEST_DIR} (${OS_CODENAME})" >&2
-        
-        # Construct the full URL - this is the ONLY thing that goes to stdout
-        echo "https://downloads.raspberrypi.com/raspios_arm64/images/${LATEST_DIR}/${IMAGE_DATE}-raspios-${OS_CODENAME}-arm64.img.xz"
+        echo -e "${RED}Error: Pinned image (2025-12-04) not found at expected URL${NC}" >&2
+        echo "Expected URL: ${PINNED_URL}" >&2
+        echo "" >&2
+        echo "This script is pinned to the December 4, 2025 Trixie release." >&2
+        echo "If this image has been removed from Raspberry Pi servers," >&2
+        echo "please update TARGET_IMAGE_DATE in this script." >&2
+        return 1
     }
 
     # Check if we have any cached images
@@ -704,8 +699,12 @@ else
         echo "Downloading Raspberry Pi OS (64-bit) with Desktop..."
         echo "Note: Full desktop image is ~1.1GB, this may take several minutes..."
         
-        # Fetch the latest image URL
-        IMAGE_URL=$(fetch_latest_image_url)
+        # Get the pinned image URL (2025-12-04 Trixie only)
+        IMAGE_URL=$(get_pinned_image_url)
+        if [ $? -ne 0 ] || [ -z "$IMAGE_URL" ]; then
+            echo -e "${RED}Error: Could not get pinned image URL${NC}"
+            exit 1
+        fi
         echo "Image URL: $IMAGE_URL"
         
         # Extract image name from URL
@@ -721,6 +720,25 @@ else
         else
             curl -L --progress-bar -o "$IMAGE_XZ_PATH" "$IMAGE_URL"
         fi
+        
+        # Verify the download is a valid xz file (not an HTML error page)
+        echo ""
+        echo "Verifying downloaded file..."
+        if ! file "$IMAGE_XZ_PATH" | grep -q "XZ compressed"; then
+            echo -e "${RED}Error: Downloaded file is not a valid XZ archive${NC}"
+            echo "This usually means the image URL was incorrect or the download failed."
+            echo ""
+            echo "File type detected: $(file "$IMAGE_XZ_PATH")"
+            echo "Expected URL: $IMAGE_URL"
+            echo ""
+            echo "Please check:"
+            echo "  1. Your internet connection"
+            echo "  2. That the Raspberry Pi download servers are accessible"
+            echo "  3. The image URL is correct"
+            rm -f "$IMAGE_XZ_PATH"
+            exit 1
+        fi
+        echo "✓ Download verified as valid XZ archive"
         
         echo ""
         echo "Extracting image (this may take a few minutes for desktop image)..."
