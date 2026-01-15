@@ -606,6 +606,22 @@ for i in {1..60}; do
     sleep 5
 done
 
+# Wait for time synchronization (required for SSL/certificate validation)
+# Raspberry Pi has no battery-backed RTC, so clock may be wrong until NTP syncs
+echo "Waiting for time synchronization..."
+for i in {1..30}; do
+    if timedatectl status 2>/dev/null | grep -q "synchronized: yes"; then
+        echo "Time synchronized!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "Warning: Time sync timeout, continuing anyway..."
+    fi
+    sleep 2
+done
+# Show current time for logging
+echo "Current time: $(date)"
+
 # Install nvm and Node.js
 echo "Installing Node.js via nvm..."
 sudo -u $USERNAME bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
