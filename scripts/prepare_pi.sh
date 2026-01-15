@@ -1565,19 +1565,28 @@ fi
 echo ""
 
 # Wait for user account to be created from userconf.txt
+# We know the expected username from PI_NAME, so wait for that SPECIFIC user
 # This is necessary because systemd.run runs early in boot, potentially before
 # the userconf.txt processing service has created the user account.
-echo "Waiting for user account to be created from userconf.txt..."
-MAX_USER_WAIT=120
+echo "Waiting for user '$PI_NAME' to be created from userconf.txt..."
+MAX_USER_WAIT=180  # 3 minutes - give plenty of time for first-boot processing
 USER_WAIT=0
 SETUP_USER=""
 
 while [ $USER_WAIT -lt $MAX_USER_WAIT ]; do
-    # Look for user home directory (created by userconf.txt processing)
-    SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" 2>/dev/null | head -1)
+    # Check if the EXPECTED user's home directory exists
+    if [ -d "/home/$PI_NAME" ]; then
+        SETUP_USER="$PI_NAME"
+        echo "✓ Expected user account found: $SETUP_USER (after ${USER_WAIT}s)"
+        break
+    fi
     
-    if [ -n "$SETUP_USER" ] && [ -d "/home/$SETUP_USER" ]; then
-        echo "✓ User account found: $SETUP_USER (after ${USER_WAIT}s)"
+    # Also check if user exists in passwd (might exist before home dir is created)
+    if id "$PI_NAME" &>/dev/null; then
+        SETUP_USER="$PI_NAME"
+        echo "✓ Expected user found in system: $SETUP_USER (after ${USER_WAIT}s)"
+        # Wait a bit more for home directory to be fully created
+        sleep 5
         break
     fi
     
@@ -1585,29 +1594,47 @@ while [ $USER_WAIT -lt $MAX_USER_WAIT ]; do
     USER_WAIT=$((USER_WAIT + 5))
     
     if [ $((USER_WAIT % 15)) -eq 0 ]; then
-        echo "  Still waiting for user account... ($USER_WAIT/$MAX_USER_WAIT seconds)"
-        echo "  Contents of /home: $(ls /home 2>/dev/null || echo 'empty')"
+        echo "  Still waiting for user '$PI_NAME'... ($USER_WAIT/$MAX_USER_WAIT seconds)"
+        echo "  Users in /home: $(ls /home 2>/dev/null || echo 'none')"
+        echo "  Users in passwd (UID>=1000): $(awk -F: '$3 >= 1000 && $3 < 65000 {print $1}' /etc/passwd 2>/dev/null | tr '\n' ' ' || echo 'none')"
     fi
 done
 
 SETUP_HOME="/home/$SETUP_USER"
 
 if [ -z "$SETUP_USER" ] || [ ! -d "$SETUP_HOME" ]; then
-    echo "ERROR: User account was not created after $MAX_USER_WAIT seconds!"
-    echo "This means userconf.txt was not processed correctly."
-    echo "Contents of /home:"
-    ls -la /home
     echo ""
-    echo "Attempting fallback detection..."
-    # Fallback: look for a directory that looks like a username (not a script)
-    SETUP_USER=$(ls -d /home/*/ 2>/dev/null | grep -v "lost+found" | head -1 | xargs -r basename)
-    SETUP_HOME="/home/$SETUP_USER"
-    
-    if [ -z "$SETUP_USER" ]; then
-        echo "CRITICAL: No user found. Cannot continue with setup."
-        echo "Please check the userconf.txt file on the boot partition."
-        # Don't exit - let the rest of the script try to run so we get logs
+    echo "=========================================="
+    echo "ERROR: Expected user '$PI_NAME' was not created!"
+    echo "=========================================="
+    echo ""
+    echo "After waiting $MAX_USER_WAIT seconds, the expected user was not found."
+    echo "This means userconf.txt may not have been processed correctly."
+    echo ""
+    echo "Diagnostic information:"
+    echo "  Expected username: $PI_NAME"
+    echo "  Contents of /home:"
+    ls -la /home 2>/dev/null || echo "    (empty or not accessible)"
+    echo ""
+    echo "  Users with UID >= 1000:"
+    awk -F: '$3 >= 1000 && $3 < 65000 {print "    " $1 " (UID=" $3 ")"}' /etc/passwd 2>/dev/null || echo "    (none found)"
+    echo ""
+    echo "  Checking userconf.txt on boot partition:"
+    if [ -f "/boot/firmware/userconf.txt" ]; then
+        echo "    File exists: /boot/firmware/userconf.txt"
+        echo "    Content (first 50 chars): $(head -c 50 /boot/firmware/userconf.txt 2>/dev/null)..."
+    else
+        echo "    userconf.txt NOT FOUND on boot partition!"
     fi
+    echo ""
+    # DO NOT fall back to any other user - if our expected user isn't there, something is wrong
+    # But we'll continue to try to get more diagnostic info in the logs
+    echo "CRITICAL: Cannot proceed with setup for user '$PI_NAME'."
+    echo "The setup will attempt to continue but may fail."
+    echo ""
+    # Use PI_NAME anyway so the rest of the script has something to work with
+    SETUP_USER="$PI_NAME"
+    SETUP_HOME="/home/$SETUP_USER"
 fi
 
 echo "Running setup for user: $SETUP_USER"
