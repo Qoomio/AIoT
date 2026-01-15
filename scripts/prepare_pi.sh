@@ -1945,7 +1945,8 @@ CMDLINE_FILE="$BOOT_MOUNT/cmdline.txt"
 if [ -f "$CMDLINE_FILE" ]; then
     echo "Configuring cmdline.txt to run firstrun.sh on first boot..."
     # Read current cmdline.txt and append the firstrun trigger
-    # We need to add: systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
+    # Note: We do NOT use systemd.unit=kernel-command-line.target because that runs too early
+    # (before userconf.txt is processed). Without it, firstrun.sh runs after user creation.
     CURRENT_CMDLINE=$(cat "$CMDLINE_FILE" | tr -d '\n')
     
     # Check if already modified
@@ -1953,7 +1954,7 @@ if [ -f "$CMDLINE_FILE" ]; then
         echo "cmdline.txt already contains firstrun configuration"
     else
         # Append the firstrun trigger (keeping everything on one line is critical!)
-        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target" > "$CMDLINE_FILE"
+        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot" > "$CMDLINE_FILE"
         echo "✓ cmdline.txt configured to run firstrun.sh"
     fi
 else
