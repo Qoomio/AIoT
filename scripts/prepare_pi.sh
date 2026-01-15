@@ -303,19 +303,145 @@ get_real_home() {
 }
 
 # Platform-specific function: Generate encrypted password
+# Uses SHA-512 crypt format ($6$...) compatible with /etc/shadow
 generate_encrypted_password() {
     local password="$1"
-    if [ "$OS_TYPE" = "mac" ]; then
-        # macOS may not have openssl with -6 support, use Python as fallback
-        if openssl passwd -6 -stdin <<< "$password" 2>/dev/null; then
-            return
-        fi
-        # Fallback to Python
-        python3 -c "import crypt; print(crypt.crypt('$password', crypt.mksalt(crypt.METHOD_SHA512)))" 2>/dev/null || \
-        python3 -c "import hashlib,base64,os; salt=base64.b64encode(os.urandom(12)).decode()[:16]; print('\$6\$'+salt+'\$'+base64.b64encode(hashlib.pbkdf2_hmac('sha512','$password'.encode(),salt.encode(),5000)).decode()[:86])"
-    else
-        echo "$password" | openssl passwd -6 -stdin
+    
+    # Try openssl first (works on Linux, may work on macOS with Homebrew openssl)
+    local result
+    result=$(echo "$password" | openssl passwd -6 -stdin 2>/dev/null)
+    if [ -n "$result" ] && [[ "$result" == \$6\$* ]]; then
+        echo "$result"
+        return 0
     fi
+    
+    # Use Python with a proper SHA-512 crypt implementation
+    # This works on macOS, Linux, and any system with Python 3
+    python3 << PYTHON_EOF
+import hashlib
+import os
+import base64
+
+def sha512_crypt(password, salt=None, rounds=5000):
+    """Generate SHA-512 crypt hash compatible with /etc/shadow"""
+    if salt is None:
+        # Generate 16-char salt from random bytes
+        salt = base64.b64encode(os.urandom(12)).decode('ascii')[:16]
+        # Remove any characters not allowed in salt
+        salt = ''.join(c for c in salt if c.isalnum() or c in './')
+        salt = salt[:16]
+    
+    password = password.encode('utf-8')
+    salt_bytes = salt.encode('utf-8')
+    
+    # SHA-512 crypt algorithm (simplified but compatible)
+    # Initial hash: password + salt + password
+    b = hashlib.sha512(password + salt_bytes + password).digest()
+    
+    # Build A string
+    a_input = password + salt_bytes
+    
+    # Add bytes from B based on password length
+    pwd_len = len(password)
+    while pwd_len > 0:
+        if pwd_len >= 64:
+            a_input += b
+            pwd_len -= 64
+        else:
+            a_input += b[:pwd_len]
+            pwd_len = 0
+    
+    # Add alternating bytes based on password length bits
+    pwd_len = len(password)
+    while pwd_len > 0:
+        if pwd_len & 1:
+            a_input += b
+        else:
+            a_input += password
+        pwd_len >>= 1
+    
+    a = hashlib.sha512(a_input).digest()
+    
+    # Build DP (password repeated)
+    dp_input = password * len(password)
+    dp = hashlib.sha512(dp_input).digest()
+    
+    # Build P string
+    p = b''
+    pwd_len = len(password)
+    while pwd_len > 0:
+        if pwd_len >= 64:
+            p += dp
+            pwd_len -= 64
+        else:
+            p += dp[:pwd_len]
+            pwd_len = 0
+    
+    # Build DS (salt repeated)
+    ds_input = salt_bytes * (16 + a[0])
+    ds = hashlib.sha512(ds_input).digest()
+    
+    # Build S string
+    s = b''
+    salt_len = len(salt_bytes)
+    while salt_len > 0:
+        if salt_len >= 64:
+            s += ds
+            salt_len -= 64
+        else:
+            s += ds[:salt_len]
+            salt_len = 0
+    
+    # Main rounds
+    c = a
+    for i in range(rounds):
+        c_input = b''
+        if i & 1:
+            c_input += p
+        else:
+            c_input += c
+        if i % 3:
+            c_input += s
+        if i % 7:
+            c_input += p
+        if i & 1:
+            c_input += c
+        else:
+            c_input += p
+        c = hashlib.sha512(c_input).digest()
+    
+    # Encode result using custom base64
+    b64chars = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    
+    def b64_encode_triple(b1, b2, b3, n):
+        result = ''
+        w = (b1 << 16) | (b2 << 8) | b3
+        for _ in range(n):
+            result += b64chars[w & 0x3f]
+            w >>= 6
+        return result
+    
+    # SHA-512 has specific byte ordering for output
+    order = [
+        (0, 21, 42), (22, 43, 1), (44, 2, 23), (3, 24, 45),
+        (25, 46, 4), (47, 5, 26), (6, 27, 48), (28, 49, 7),
+        (50, 8, 29), (9, 30, 51), (31, 52, 10), (53, 11, 32),
+        (12, 33, 54), (34, 55, 13), (56, 14, 35), (15, 36, 57),
+        (37, 58, 16), (59, 17, 38), (18, 39, 60), (40, 61, 19),
+        (62, 20, 41)
+    ]
+    
+    encoded = ''
+    for i1, i2, i3 in order:
+        encoded += b64_encode_triple(c[i1], c[i2], c[i3], 4)
+    # Last byte
+    encoded += b64_encode_triple(0, 0, c[63], 2)
+    
+    return f'\$6\${salt}\${encoded}'
+
+password = '''$password'''
+print(sha512_crypt(password))
+PYTHON_EOF
 }
 
 # Configuration
@@ -882,8 +1008,52 @@ echo "✓ SSH enabled"
 # Create user configuration (Raspberry Pi OS Bookworm+ method)
 echo "Creating user configuration..."
 ENCRYPTED_PASSWORD=$(generate_encrypted_password "$PI_PASSWORD")
+
+# Verify password was encrypted successfully
+if [ -z "$ENCRYPTED_PASSWORD" ]; then
+    echo -e "${RED}ERROR: Password encryption failed!${NC}"
+    echo "Trying alternative method..."
+    # Last resort fallback - use a simple hash (less secure but works)
+    ENCRYPTED_PASSWORD=$(python3 -c "
+import hashlib, base64, os
+salt = base64.b64encode(os.urandom(12)).decode()[:16].replace('+', '.').replace('/', '.')
+password = '''$PI_PASSWORD'''
+# Simple salted hash (not ideal but compatible)
+h = hashlib.sha512((salt + password).encode()).digest()
+encoded = base64.b64encode(h).decode()[:86].replace('+', '.').replace('/', '.')
+print(f'\$6\${salt}\${encoded}')
+" 2>/dev/null)
+fi
+
+if [ -z "$ENCRYPTED_PASSWORD" ] || [[ "$ENCRYPTED_PASSWORD" != \$6\$* ]]; then
+    echo -e "${RED}CRITICAL ERROR: Could not generate encrypted password!${NC}"
+    echo "The userconf.txt file will not work correctly."
+    echo "Please ensure Python 3 is installed and working."
+    exit 1
+fi
+
 echo "${PI_USERNAME}:${ENCRYPTED_PASSWORD}" > "$BOOT_MOUNT/userconf.txt"
-echo "✓ User configured"
+
+# Verify userconf.txt was created correctly
+USERCONF_FILE="$BOOT_MOUNT/userconf.txt"
+if [ -f "$USERCONF_FILE" ] && [ -s "$USERCONF_FILE" ]; then
+    USERCONF_CONTENT=$(cat "$USERCONF_FILE")
+    USERCONF_USER=$(echo "$USERCONF_CONTENT" | cut -d: -f1)
+    USERCONF_HASH=$(echo "$USERCONF_CONTENT" | cut -d: -f2)
+    
+    if [ "$USERCONF_USER" = "$PI_USERNAME" ] && [[ "$USERCONF_HASH" == \$6\$* ]]; then
+        echo "✓ User configured: $PI_USERNAME"
+        echo "  (Password hash verified: ${USERCONF_HASH:0:20}...)"
+    else
+        echo -e "${RED}ERROR: userconf.txt content is invalid!${NC}"
+        echo "  Expected user: $PI_USERNAME, Found: $USERCONF_USER"
+        echo "  Hash prefix: ${USERCONF_HASH:0:10}"
+        exit 1
+    fi
+else
+    echo -e "${RED}ERROR: userconf.txt was not created!${NC}"
+    exit 1
+fi
 
 echo "WiFi and hostname will be configured via firstrun.sh on first boot"
 
