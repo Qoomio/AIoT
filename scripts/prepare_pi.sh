@@ -303,145 +303,19 @@ get_real_home() {
 }
 
 # Platform-specific function: Generate encrypted password
-# Uses SHA-512 crypt format ($6$...) compatible with /etc/shadow
 generate_encrypted_password() {
     local password="$1"
-    
-    # Try openssl first (works on Linux, may work on macOS with Homebrew openssl)
-    local result
-    result=$(echo "$password" | openssl passwd -6 -stdin 2>/dev/null)
-    if [ -n "$result" ] && [[ "$result" == \$6\$* ]]; then
-        echo "$result"
-        return 0
+    if [ "$OS_TYPE" = "mac" ]; then
+        # macOS may not have openssl with -6 support, use Python as fallback
+        if openssl passwd -6 -stdin <<< "$password" 2>/dev/null; then
+            return
+        fi
+        # Fallback to Python
+        python3 -c "import crypt; print(crypt.crypt('$password', crypt.mksalt(crypt.METHOD_SHA512)))" 2>/dev/null || \
+        python3 -c "import hashlib,base64,os; salt=base64.b64encode(os.urandom(12)).decode()[:16]; print('\$6\$'+salt+'\$'+base64.b64encode(hashlib.pbkdf2_hmac('sha512','$password'.encode(),salt.encode(),5000)).decode()[:86])"
+    else
+        echo "$password" | openssl passwd -6 -stdin
     fi
-    
-    # Use Python with a proper SHA-512 crypt implementation
-    # This works on macOS, Linux, and any system with Python 3
-    python3 << PYTHON_EOF
-import hashlib
-import os
-import base64
-
-def sha512_crypt(password, salt=None, rounds=5000):
-    """Generate SHA-512 crypt hash compatible with /etc/shadow"""
-    if salt is None:
-        # Generate 16-char salt from random bytes
-        salt = base64.b64encode(os.urandom(12)).decode('ascii')[:16]
-        # Remove any characters not allowed in salt
-        salt = ''.join(c for c in salt if c.isalnum() or c in './')
-        salt = salt[:16]
-    
-    password = password.encode('utf-8')
-    salt_bytes = salt.encode('utf-8')
-    
-    # SHA-512 crypt algorithm (simplified but compatible)
-    # Initial hash: password + salt + password
-    b = hashlib.sha512(password + salt_bytes + password).digest()
-    
-    # Build A string
-    a_input = password + salt_bytes
-    
-    # Add bytes from B based on password length
-    pwd_len = len(password)
-    while pwd_len > 0:
-        if pwd_len >= 64:
-            a_input += b
-            pwd_len -= 64
-        else:
-            a_input += b[:pwd_len]
-            pwd_len = 0
-    
-    # Add alternating bytes based on password length bits
-    pwd_len = len(password)
-    while pwd_len > 0:
-        if pwd_len & 1:
-            a_input += b
-        else:
-            a_input += password
-        pwd_len >>= 1
-    
-    a = hashlib.sha512(a_input).digest()
-    
-    # Build DP (password repeated)
-    dp_input = password * len(password)
-    dp = hashlib.sha512(dp_input).digest()
-    
-    # Build P string
-    p = b''
-    pwd_len = len(password)
-    while pwd_len > 0:
-        if pwd_len >= 64:
-            p += dp
-            pwd_len -= 64
-        else:
-            p += dp[:pwd_len]
-            pwd_len = 0
-    
-    # Build DS (salt repeated)
-    ds_input = salt_bytes * (16 + a[0])
-    ds = hashlib.sha512(ds_input).digest()
-    
-    # Build S string
-    s = b''
-    salt_len = len(salt_bytes)
-    while salt_len > 0:
-        if salt_len >= 64:
-            s += ds
-            salt_len -= 64
-        else:
-            s += ds[:salt_len]
-            salt_len = 0
-    
-    # Main rounds
-    c = a
-    for i in range(rounds):
-        c_input = b''
-        if i & 1:
-            c_input += p
-        else:
-            c_input += c
-        if i % 3:
-            c_input += s
-        if i % 7:
-            c_input += p
-        if i & 1:
-            c_input += c
-        else:
-            c_input += p
-        c = hashlib.sha512(c_input).digest()
-    
-    # Encode result using custom base64
-    b64chars = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    
-    def b64_encode_triple(b1, b2, b3, n):
-        result = ''
-        w = (b1 << 16) | (b2 << 8) | b3
-        for _ in range(n):
-            result += b64chars[w & 0x3f]
-            w >>= 6
-        return result
-    
-    # SHA-512 has specific byte ordering for output
-    order = [
-        (0, 21, 42), (22, 43, 1), (44, 2, 23), (3, 24, 45),
-        (25, 46, 4), (47, 5, 26), (6, 27, 48), (28, 49, 7),
-        (50, 8, 29), (9, 30, 51), (31, 52, 10), (53, 11, 32),
-        (12, 33, 54), (34, 55, 13), (56, 14, 35), (15, 36, 57),
-        (37, 58, 16), (59, 17, 38), (18, 39, 60), (40, 61, 19),
-        (62, 20, 41)
-    ]
-    
-    encoded = ''
-    for i1, i2, i3 in order:
-        encoded += b64_encode_triple(c[i1], c[i2], c[i3], 4)
-    # Last byte
-    encoded += b64_encode_triple(0, 0, c[63], 2)
-    
-    return f'\$6\${salt}\${encoded}'
-
-password = '''$password'''
-print(sha512_crypt(password))
-PYTHON_EOF
 }
 
 # Configuration
@@ -945,10 +819,10 @@ print('  Decompressing... 100%')
 fi
 
 # ===================================
-# STEP 8: Mount Boot and Root Partitions
+# STEP 8: Mount Boot Partition and Configure
 # ===================================
 echo ""
-echo -e "${GREEN}Step 8: Mounting partitions...${NC}"
+echo -e "${GREEN}Step 8: Configuring boot partition...${NC}"
 
 # Determine partition names using platform-specific function
 BOOT_PARTITION=$(get_partition_name "$SD_DEVICE" 1)
@@ -983,10 +857,10 @@ fi
 
 echo "✓ Partitions detected: $BOOT_PARTITION, $ROOT_PARTITION"
 
-# Create mount points for both partitions
+# Create mount point for boot partition only (FAT32 - works on all platforms)
+# We don't need to mount the ext4 root partition - everything goes on boot partition
 BOOT_MOUNT="/tmp/qoom-boot-$$"
-ROOT_MOUNT="/tmp/qoom-root-$$"
-mkdir -p "$BOOT_MOUNT" "$ROOT_MOUNT"
+mkdir -p "$BOOT_MOUNT"
 
 # On Mac, unmount any auto-mounted partitions first
 if [ "$OS_TYPE" = "mac" ]; then
@@ -994,41 +868,11 @@ if [ "$OS_TYPE" = "mac" ]; then
     diskutil unmount "$ROOT_PARTITION" 2>/dev/null || true
 fi
 
-# Mount boot partition (FAT32 - native support on all platforms)
+# Mount boot partition only (FAT32 - native support on macOS, Linux, Windows)
 echo "Mounting boot partition..."
 mount_partition "$BOOT_PARTITION" "$BOOT_MOUNT"
 
-# Mount root partition (ext4 - requires ext4 support on macOS)
-echo "Mounting root partition..."
-if [ "$OS_TYPE" = "mac" ]; then
-    # On Mac, the root partition is ext4 which requires special handling
-    if command -v fuse-ext2 &>/dev/null || command -v ext4fuse &>/dev/null; then
-        fuse-ext2 "$ROOT_PARTITION" "$ROOT_MOUNT" -o rw+ 2>/dev/null || \
-        ext4fuse "$ROOT_PARTITION" "$ROOT_MOUNT" -o allow_other 2>/dev/null || {
-            echo -e "${YELLOW}Warning: Could not mount ext4 partition with write access.${NC}"
-            echo "On macOS, you need ext4 support. Install with:"
-            echo "  brew install macfuse"
-            echo "  brew install ext4fuse"
-            echo ""
-            echo "The boot partition (SSH, user config) will still be configured."
-            echo "WiFi, hostname, and first-boot script require root partition access."
-            ROOT_MOUNT_FAILED=true
-        }
-    else
-        echo -e "${YELLOW}Warning: ext4 filesystem support not found on macOS.${NC}"
-        echo "On macOS, you need ext4 support to configure the root partition. Install with:"
-        echo "  brew install macfuse"
-        echo "  brew install ext4fuse"
-        echo ""
-        echo "The boot partition (SSH, user config) will still be configured."
-        echo "WiFi, hostname, and first-boot script require root partition access."
-        ROOT_MOUNT_FAILED=true
-    fi
-else
-    mount "$ROOT_PARTITION" "$ROOT_MOUNT"
-fi
-
-echo "✓ Partitions mounted"
+echo "✓ Boot partition mounted (FAT32 - no ext4 access needed)"
 
 # Enable SSH
 echo "Enabling SSH..."
@@ -1038,73 +882,89 @@ echo "✓ SSH enabled"
 # Create user configuration (Raspberry Pi OS Bookworm+ method)
 echo "Creating user configuration..."
 ENCRYPTED_PASSWORD=$(generate_encrypted_password "$PI_PASSWORD")
-
-# Verify password was encrypted successfully
-if [ -z "$ENCRYPTED_PASSWORD" ]; then
-    echo -e "${RED}ERROR: Password encryption failed!${NC}"
-    echo "Trying alternative method..."
-    ENCRYPTED_PASSWORD=$(python3 -c "
-import hashlib, base64, os
-salt = base64.b64encode(os.urandom(12)).decode()[:16].replace('+', '.').replace('/', '.')
-password = '''$PI_PASSWORD'''
-h = hashlib.sha512((salt + password).encode()).digest()
-encoded = base64.b64encode(h).decode()[:86].replace('+', '.').replace('/', '.')
-print(f'\$6\${salt}\${encoded}')
-" 2>/dev/null)
-fi
-
-if [ -z "$ENCRYPTED_PASSWORD" ] || [[ "$ENCRYPTED_PASSWORD" != \$6\$* ]]; then
-    echo -e "${RED}CRITICAL ERROR: Could not generate encrypted password!${NC}"
-    echo "The userconf.txt file will not work correctly."
-    echo "Please ensure Python 3 is installed and working."
-    exit 1
-fi
-
 echo "${PI_USERNAME}:${ENCRYPTED_PASSWORD}" > "$BOOT_MOUNT/userconf.txt"
+echo "✓ User configured"
 
-# Verify userconf.txt was created correctly
-USERCONF_FILE="$BOOT_MOUNT/userconf.txt"
-if [ -f "$USERCONF_FILE" ] && [ -s "$USERCONF_FILE" ]; then
-    USERCONF_CONTENT=$(cat "$USERCONF_FILE")
-    USERCONF_USER=$(echo "$USERCONF_CONTENT" | cut -d: -f1)
-    USERCONF_HASH=$(echo "$USERCONF_CONTENT" | cut -d: -f2)
-    
-    if [ "$USERCONF_USER" = "$PI_USERNAME" ] && [[ "$USERCONF_HASH" == \$6\$* ]]; then
-        echo "✓ User configured: $PI_USERNAME"
-        echo "  (Password hash verified: ${USERCONF_HASH:0:20}...)"
-    else
-        echo -e "${RED}ERROR: userconf.txt content is invalid!${NC}"
-        echo "  Expected user: $PI_USERNAME, Found: $USERCONF_USER"
-        echo "  Hash prefix: ${USERCONF_HASH:0:10}"
-        exit 1
-    fi
-else
-    echo -e "${RED}ERROR: userconf.txt was not created!${NC}"
-    exit 1
-fi
+echo "WiFi and hostname will be configured via firstrun.sh on first boot"
 
 # ===================================
-# STEP 9: Configure WiFi and Hostname (requires root partition)
+# STEP 9: Configure Repository
 # ===================================
 echo ""
-if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-    echo -e "${YELLOW}Step 9: Skipping WiFi/hostname configuration (root partition not mounted)${NC}"
-    echo "WiFi and hostname will need to be configured manually on first boot."
-else
-    echo -e "${GREEN}Step 9: Configuring WiFi and hostname...${NC}"
-    
-    # Configure WiFi using NetworkManager
-    echo "Creating WiFi configuration for $WIFI_SSID..."
-    mkdir -p "$ROOT_MOUNT/etc/NetworkManager/system-connections"
-    
-    # Remove any existing config (file or directory) with this name
-    WIFI_CONFIG_FILE="$ROOT_MOUNT/etc/NetworkManager/system-connections/qoom-wifi.nmconnection"
-    rm -rf "$WIFI_CONFIG_FILE" 2>/dev/null || true
-    
-    cat > "$WIFI_CONFIG_FILE" << EOF
+echo -e "${GREEN}Step 9: Configuring Qoom repository...${NC}"
+echo "The Pi will clone code from: https://github.com/Qoomio/AIoT.git"
+echo "The code/ folder will be copied to projects/aiot/ on first boot"
+echo "✓ Repository configured"
+
+# ===================================
+# STEP 10: Create First-Boot Setup Script (on boot partition)
+# ===================================
+echo ""
+echo -e "${GREEN}Step 10: Creating first-boot setup script on boot partition...${NC}"
+echo "This script will run on the Pi's first boot to configure WiFi, hostname, and install Qoom."
+
+# Create the firstrun.sh script on the boot partition
+# Raspberry Pi OS will execute this via cmdline.txt modification
+cat > "$BOOT_MOUNT/firstrun.sh" << 'QOOM_SETUP_EOF'
+#!/bin/bash
+# Qoom First-Boot Setup Script
+# This script runs automatically on first boot
+
+# Don't exit on error - we want to continue and log issues
+set +e
+
+# Configuration (will be replaced by sed)
+PI_NAME="__PI_NAME__"
+WIFI_SSID="__WIFI_SSID__"
+WIFI_PASSWORD="__WIFI_PASSWORD__"
+WIFI_COUNTRY="__WIFI_COUNTRY__"
+
+# Setup logging - log to both /var/log and /boot for easy SD card reading
+LOG_FILE="/var/log/qoom-setup.log"
+BOOT_LOG="/boot/firmware/qoom-setup.log"
+
+# Function to log to both locations
+log_msg() {
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$msg" | tee -a "$LOG_FILE" "$BOOT_LOG" 2>/dev/null || echo "$msg" >> "$LOG_FILE"
+}
+
+# Start logging
+exec > >(while read line; do log_msg "$line"; done) 2>&1
+
+echo "======================================"
+echo "Qoom First-Boot Setup - $(date)"
+echo "Pi Name: $PI_NAME"
+echo "======================================"
+echo ""
+
+# ===================================
+# STEP 0: Configure Hostname and WiFi (before anything else)
+# ===================================
+echo "Step 0: Configuring hostname and WiFi..."
+echo ""
+
+# Set hostname
+echo "Setting hostname to $PI_NAME..."
+echo "$PI_NAME" > /etc/hostname
+sed -i "s/raspberrypi/$PI_NAME/g" /etc/hosts 2>/dev/null || true
+hostnamectl set-hostname "$PI_NAME" 2>/dev/null || true
+echo "✓ Hostname set to $PI_NAME"
+
+# Configure WiFi regulatory domain
+echo "Setting WiFi country to $WIFI_COUNTRY..."
+iw reg set "$WIFI_COUNTRY" 2>/dev/null || true
+raspi-config nonint do_wifi_country "$WIFI_COUNTRY" 2>/dev/null || true
+echo "✓ WiFi country set"
+
+# Create WiFi configuration file
+echo "Creating WiFi configuration for $WIFI_SSID..."
+mkdir -p /etc/NetworkManager/system-connections
+
+cat > /etc/NetworkManager/system-connections/qoom-wifi.nmconnection << WIFI_INITIAL_EOF
 [connection]
 id=$WIFI_SSID
-uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "$(date +%s)-wifi-config")
+uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "$(date +%s)-$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')")
 type=wifi
 autoconnect=true
 
@@ -1122,289 +982,709 @@ method=auto
 
 [ipv6]
 method=auto
-EOF
-    
-    chmod 600 "$WIFI_CONFIG_FILE"
-    echo "✓ WiFi configured"
-    
-    # Set hostname
-    echo "Setting hostname to $PI_NAME..."
-    echo "$PI_NAME" > "$ROOT_MOUNT/etc/hostname"
-    
-    # Update /etc/hosts
-    if [ "$OS_TYPE" = "mac" ]; then
-        if command -v gsed &>/dev/null; then
-            gsed -i "s/raspberrypi/$PI_NAME/g" "$ROOT_MOUNT/etc/hosts"
-        else
-            sed -i '' "s/raspberrypi/$PI_NAME/g" "$ROOT_MOUNT/etc/hosts"
-        fi
-    else
-        sed -i "s/raspberrypi/$PI_NAME/g" "$ROOT_MOUNT/etc/hosts"
-    fi
-    echo "✓ Hostname set"
-fi
+WIFI_INITIAL_EOF
 
-# ===================================
-# STEP 10: Create First-Boot Setup Script (ext4 method - like LegoPet)
-# ===================================
-echo ""
-if [ "${ROOT_MOUNT_FAILED:-false}" = "true" ]; then
-    echo -e "${YELLOW}Step 10: Skipping first-boot script (root partition not mounted)${NC}"
-    echo "The Pi will boot with basic configuration only."
-    echo "You will need to manually set up Qoom after first boot."
-else
-    echo -e "${GREEN}Step 10: Creating first-boot setup script...${NC}"
-    
-    # Create directory for the setup script
-    mkdir -p "$ROOT_MOUNT/opt/qoom"
-    
-    # Create the main setup script that will run on first boot
-    cat > "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh" << 'QOOM_SETUP_EOF'
-#!/bin/bash
-# Qoom First-Boot Setup Script
-# This script runs automatically on first boot via systemd
+chmod 600 /etc/NetworkManager/system-connections/qoom-wifi.nmconnection
+echo "✓ WiFi configuration created"
 
-set +e  # Don't exit on error - we want to continue and log issues
-
-# Configuration (will be replaced by sed)
-PI_NAME="__PI_NAME__"
-WIFI_SSID="__WIFI_SSID__"
-WIFI_PASSWORD="__WIFI_PASSWORD__"
-WIFI_COUNTRY="__WIFI_COUNTRY__"
-
-# Setup logging
-LOG_FILE="/var/log/qoom-setup.log"
-BOOT_LOG="/boot/firmware/qoom-setup.log"
-
-log_msg() {
-    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-    echo "$msg" | tee -a "$LOG_FILE" "$BOOT_LOG" 2>/dev/null || echo "$msg" >> "$LOG_FILE"
-}
-
-exec > >(while read line; do log_msg "$line"; done) 2>&1
-
-echo "======================================"
-echo "Qoom First-Boot Setup - $(date)"
-echo "Pi Name: $PI_NAME"
-echo "======================================"
-echo ""
-
-# ===================================
-# Step 1: Ensure WiFi is configured and connected
-# ===================================
-echo "Step 1: Configuring WiFi..."
-
-# Set WiFi country
-iw reg set "$WIFI_COUNTRY" 2>/dev/null || true
-raspi-config nonint do_wifi_country "$WIFI_COUNTRY" 2>/dev/null || true
-
-# Unblock WiFi
+# Unblock WiFi and restart NetworkManager to pick up new config
+echo "Enabling WiFi..."
 rfkill unblock all 2>/dev/null || true
 rfkill unblock wifi 2>/dev/null || true
 nmcli radio wifi on 2>/dev/null || true
 
-# Restart NetworkManager
+echo "Restarting NetworkManager..."
 systemctl restart NetworkManager 2>/dev/null || true
-sleep 5
+sleep 3
 
 # Try to activate the connection
+echo "Activating WiFi connection..."
 nmcli connection reload 2>/dev/null || true
 nmcli connection up "$WIFI_SSID" 2>/dev/null || true
-
-echo "✓ WiFi configuration complete"
-
-# ===================================
-# Step 2: Wait for network connectivity
-# ===================================
 echo ""
-echo "Step 2: Waiting for network..."
 
+# Function to log detailed network status
+log_network_status() {
+    echo ""
+    echo "=== Network Status Debug Info ==="
+    echo "Date/Time: $(date)"
+    echo ""
+    echo "--- Hostname ---"
+    hostname
+    echo ""
+    echo "--- Network Interfaces (ip addr) ---"
+    ip addr 2>&1 || ifconfig 2>&1 || echo "Could not get interface info"
+    echo ""
+    echo "--- Wireless Interface Status ---"
+    iw dev 2>&1 || echo "iw not available"
+    echo ""
+    echo "--- NetworkManager Status ---"
+    systemctl status NetworkManager --no-pager 2>&1 | head -20 || echo "NetworkManager status unavailable"
+    echo ""
+    echo "--- NetworkManager Connections ---"
+    nmcli connection show 2>&1 || echo "nmcli not available"
+    echo ""
+    echo "--- WiFi Networks Visible ---"
+    nmcli device wifi list 2>&1 | head -20 || echo "Could not list WiFi networks"
+    echo ""
+    echo "--- Connection Files ---"
+    ls -la /etc/NetworkManager/system-connections/ 2>&1 || echo "No connection files"
+    echo ""
+    echo "--- Routing Table ---"
+    ip route 2>&1 || route -n 2>&1 || echo "Could not get routing info"
+    echo ""
+    echo "--- DNS Resolution Test ---"
+    nslookup google.com 2>&1 | head -5 || echo "DNS lookup failed"
+    echo ""
+    echo "=== End Network Status ==="
+    echo ""
+}
+
+# Function to recreate WiFi configuration file (used for troubleshooting)
+recreate_wifi_config() {
+    echo "Recreating WiFi configuration file..."
+    
+    local CONFIG_FILE="/etc/NetworkManager/system-connections/qoom-wifi.nmconnection"
+    
+    # Remove old config if exists
+    rm -f "$CONFIG_FILE" 2>/dev/null || true
+    
+    # Create new config with correct credentials
+    cat > "$CONFIG_FILE" << WIFI_EOF
+[connection]
+id=$WIFI_SSID
+uuid=$(cat /proc/sys/kernel/random/uuid)
+type=wifi
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=$WIFI_SSID
+
+[wifi-security]
+auth-alg=open
+key-mgmt=wpa-psk
+psk=$WIFI_PASSWORD
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+WIFI_EOF
+
+    # Set correct permissions (MUST be 600 for NetworkManager to use it)
+    chmod 600 "$CONFIG_FILE"
+    chown root:root "$CONFIG_FILE"
+    
+    echo "WiFi config recreated with SSID: $WIFI_SSID"
+    echo "Config file permissions: $(ls -la $CONFIG_FILE)"
+}
+
+# Function to attempt WiFi connection/reconnection
+attempt_wifi_connection() {
+    echo "Attempting to connect to WiFi: $WIFI_SSID"
+    
+    # FIRST: Unblock WiFi (RF-kill is a common issue)
+    echo "Unblocking WiFi..."
+    rfkill unblock all 2>&1 || true
+    rfkill unblock wifi 2>&1 || true
+    sleep 1
+    
+    # Check if config file exists and has correct permissions
+    local CONFIG_FILE="/etc/NetworkManager/system-connections/qoom-wifi.nmconnection"
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "WiFi config file missing! Recreating..."
+        recreate_wifi_config
+    else
+        # Check permissions - must be 600
+        local PERMS=$(stat -c %a "$CONFIG_FILE" 2>/dev/null)
+        if [ "$PERMS" != "600" ]; then
+            echo "WiFi config has wrong permissions ($PERMS), fixing..."
+            chmod 600 "$CONFIG_FILE"
+        fi
+    fi
+    
+    # Restart NetworkManager
+    echo "Restarting NetworkManager..."
+    systemctl restart NetworkManager
+    sleep 5
+    
+    # Reload connections
+    echo "Reloading NetworkManager connections..."
+    nmcli connection reload
+    sleep 2
+    
+    # Check if our connection exists and try to activate
+    if nmcli connection show | grep -q "$WIFI_SSID"; then
+        echo "Found connection for $WIFI_SSID, attempting to activate..."
+        nmcli connection up "$WIFI_SSID" 2>&1 || echo "Failed to activate by SSID name"
+    fi
+    
+    # Try to bring up wlan0 manually
+    echo "Ensuring wlan0 is up..."
+    ip link set wlan0 up 2>&1 || echo "Could not bring up wlan0"
+    
+    # Scan for networks
+    echo "Scanning for WiFi networks..."
+    nmcli device wifi rescan 2>&1 || echo "Rescan failed"
+    sleep 3
+    
+    # Show what networks are visible
+    echo "Visible networks:"
+    nmcli device wifi list 2>&1 | head -10
+    
+    sleep 5
+}
+
+# Function to check network connectivity
 check_network() {
     ping -c 1 -W 3 8.8.8.8 &> /dev/null || ping -c 1 -W 3 1.1.1.1 &> /dev/null
     return $?
 }
 
+# Function to unblock WiFi (handle RF-kill)
+unblock_wifi() {
+    echo "Checking RF-kill status..."
+    rfkill list 2>&1 || echo "rfkill command not available"
+    
+    echo "Unblocking all wireless devices..."
+    rfkill unblock all 2>&1 || echo "Could not unblock via rfkill"
+    rfkill unblock wifi 2>&1 || echo "Could not unblock wifi specifically"
+    rfkill unblock wlan 2>&1 || echo "Could not unblock wlan"
+    
+    # Also try via /sys
+    for rf in /sys/class/rfkill/rfkill*/state; do
+        if [ -f "$rf" ]; then
+            echo "Unblocking $rf..."
+            echo 1 > "$rf" 2>/dev/null || true
+        fi
+    done
+    
+    sleep 2
+    
+    # Enable WiFi via NetworkManager
+    echo "Enabling WiFi via nmcli..."
+    nmcli radio wifi on 2>&1 || echo "Could not enable via nmcli"
+    
+    sleep 2
+    echo "RF-kill status after unblock:"
+    rfkill list 2>&1 || true
+    echo ""
+    echo "WiFi radio status:"
+    nmcli radio 2>&1 || true
+}
+
+echo "Starting network connectivity check..."
+echo ""
+
+# FIRST: Unblock WiFi in case RF-kill is enabled
+echo "=== Unblocking WiFi (RF-kill) ==="
+unblock_wifi
+echo ""
+
+# Log initial network status
+echo "=== Initial Network Status (after unblocking) ==="
+log_network_status
+
+# Wait for network with detailed logging
 NETWORK_UP=false
-MAX_WAIT=300
+MAX_WAIT=600  # 10 minutes for first attempt
 RETRY_INTERVAL=10
+
+echo "Waiting for network connectivity (max ${MAX_WAIT}s)..."
 
 for ((i=0; i<=MAX_WAIT; i+=RETRY_INTERVAL)); do
     if check_network; then
-        echo "✓ Network is up after ${i} seconds"
-        echo "  IP: $(hostname -I | awk '{print $1}')"
+        echo "Network is up after ${i} seconds!"
         NETWORK_UP=true
         break
     fi
     
-    if [ $((i % 60)) -eq 0 ] && [ $i -gt 0 ]; then
-        echo "  Still waiting... (${i}s)"
-        nmcli connection reload 2>/dev/null || true
-        nmcli connection up "$WIFI_SSID" 2>/dev/null || true
+    # Log progress every 30 seconds
+    if [ $((i % 30)) -eq 0 ] && [ $i -gt 0 ]; then
+        echo "Still waiting for network... (${i}/${MAX_WAIT}s)"
+        # Log brief status
+        echo "  WiFi status: $(nmcli -t -f WIFI g 2>/dev/null || echo 'unknown')"
+        echo "  wlan0 state: $(cat /sys/class/net/wlan0/operstate 2>/dev/null || echo 'unknown')"
+    fi
+    
+    # At 2 minutes, do first retry
+    if [ $i -eq 120 ]; then
+        echo ""
+        echo "=== 2 minutes elapsed - attempting WiFi reconnection ==="
+        log_network_status
+        attempt_wifi_connection
+    fi
+    
+    # At 5 minutes, do another retry
+    if [ $i -eq 300 ]; then
+        echo ""
+        echo "=== 5 minutes elapsed - attempting WiFi reconnection again ==="
+        log_network_status
+        attempt_wifi_connection
     fi
     
     sleep $RETRY_INTERVAL
 done
 
+# If still no network after 10 minutes, do extended retry
 if [ "$NETWORK_UP" = false ]; then
-    echo "WARNING: Network not available after ${MAX_WAIT}s"
+    echo ""
+    echo "=========================================="
+    echo "WARNING: No network after 10 minutes!"
+    echo "Starting extended WiFi troubleshooting..."
+    echo "=========================================="
+    echo ""
+    
+    log_network_status
+    
+    # Try more aggressive recovery
+    echo "Attempting aggressive WiFi recovery..."
+    
+    # Stop NetworkManager
+    systemctl stop NetworkManager
+    sleep 3
+    
+    # CRITICAL: Unblock RF-kill first
+    echo "Unblocking RF-kill..."
+    rfkill unblock all 2>&1 || true
+    rfkill unblock wifi 2>&1 || true
+    echo "RF-kill status:"
+    rfkill list 2>&1 || true
+    sleep 2
+    
+    # Reset wireless interface
+    echo "Resetting wireless interface..."
+    ip link set wlan0 down 2>&1 || true
+    sleep 2
+    ip link set wlan0 up 2>&1 || true
+    sleep 2
+    
+    # Recreate WiFi config from scratch
+    echo "Recreating WiFi configuration from scratch..."
+    recreate_wifi_config
+    
+    # Restart NetworkManager
+    systemctl start NetworkManager
+    sleep 10
+    
+    # Enable WiFi via nmcli
+    echo "Enabling WiFi via nmcli..."
+    nmcli radio wifi on 2>&1 || true
+    sleep 3
+    
+    # Try to connect
+    attempt_wifi_connection
+    
+    # Wait another 10 minutes
+    echo ""
+    echo "Waiting additional 10 minutes for network..."
+    for ((i=0; i<=600; i+=RETRY_INTERVAL)); do
+        if check_network; then
+            echo "Network is up after extended wait!"
+            NETWORK_UP=true
+            break
+        fi
+        
+        if [ $((i % 60)) -eq 0 ] && [ $i -gt 0 ]; then
+            echo "Extended wait: ${i}/600s - still no network"
+            echo "  wlan0 state: $(cat /sys/class/net/wlan0/operstate 2>/dev/null || echo 'unknown')"
+        fi
+        
+        # Retry at 5 minutes of extended wait
+        if [ $i -eq 300 ]; then
+            echo "Extended retry attempt..."
+            attempt_wifi_connection
+        fi
+        
+        sleep $RETRY_INTERVAL
+    done
+fi
+
+# Final network status
+echo ""
+echo "=== Final Network Status ==="
+log_network_status
+
+if [ "$NETWORK_UP" = false ]; then
+    echo ""
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "CRITICAL: Network connection FAILED"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo ""
+    echo "The Pi could not connect to WiFi after 20 minutes of trying."
+    echo "Please check:"
+    echo "  1. WiFi SSID and password are correct"
+    echo "  2. The WiFi network is in range"
+    echo "  3. The WiFi router is powered on"
+    echo ""
+    echo "You can view this log by inserting the SD card into"
+    echo "another computer and reading:"
+    echo "  - /boot/firmware/qoom-setup.log (FAT32 partition)"
+    echo "  - /var/log/qoom-setup.log (ext4 partition)"
+    echo ""
+    echo "Continuing with setup anyway (some steps may fail)..."
+    echo ""
+else
+    echo ""
+    echo "✓ Network is connected!"
+    echo "  IP Address: $(hostname -I | awk '{print $1}')"
+    echo ""
 fi
 
 # ===================================
-# Step 3: Wait for NTP sync
+# Wait for NTP time synchronization
 # ===================================
-echo ""
-echo "Step 3: Waiting for NTP sync..."
+echo "Waiting for system clock to synchronize via NTP..."
+echo "(Raspberry Pi has no hardware clock, NTP sync is required for HTTPS)"
 
-timedatectl set-ntp true 2>/dev/null || true
+# Enable NTP
+timedatectl set-ntp true 2>/dev/null || systemctl start systemd-timesyncd 2>/dev/null || true
 
+# Wait for time sync (max 2 minutes)
+NTP_SYNCED=false
+NTP_MAX_WAIT=120
 NTP_WAIT=0
-while [ $NTP_WAIT -lt 60 ]; do
-    if [ "$(date +%Y)" -ge 2025 ]; then
-        echo "✓ System clock synchronized: $(date)"
+
+while [ $NTP_WAIT -lt $NTP_MAX_WAIT ]; do
+    # Check if time is synchronized
+    if timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q "yes"; then
+        NTP_SYNCED=true
         break
     fi
+    
+    # Alternative check for older systems
+    if timedatectl status 2>/dev/null | grep -q "synchronized: yes"; then
+        NTP_SYNCED=true
+        break
+    fi
+    
+    # Check if year is reasonable (2025 or later)
+    CURRENT_YEAR=$(date +%Y)
+    if [ "$CURRENT_YEAR" -ge 2025 ]; then
+        # Additional sanity check - try an HTTPS connection
+        if curl -sI --connect-timeout 5 https://github.com >/dev/null 2>&1; then
+            echo "Clock appears correct (year: $CURRENT_YEAR), HTTPS working"
+            NTP_SYNCED=true
+            break
+        fi
+    fi
+    
+    if [ $((NTP_WAIT % 10)) -eq 0 ]; then
+        echo "  Waiting for NTP sync... ($NTP_WAIT/$NTP_MAX_WAIT seconds)"
+        echo "  Current time: $(date)"
+    fi
+    
     sleep 5
     NTP_WAIT=$((NTP_WAIT + 5))
 done
 
-# ===================================
-# Step 4: Find the user account
-# ===================================
-echo ""
-echo "Step 4: Finding user account..."
-
-# The expected user is PI_NAME (from userconf.txt)
-if [ -d "/home/$PI_NAME" ]; then
-    SETUP_USER="$PI_NAME"
-    echo "✓ Found expected user: $SETUP_USER"
-elif id "$PI_NAME" &>/dev/null; then
-    SETUP_USER="$PI_NAME"
-    mkdir -p "/home/$SETUP_USER"
-    chown "$SETUP_USER:$SETUP_USER" "/home/$SETUP_USER"
-    echo "✓ Found user, created home: $SETUP_USER"
+if [ "$NTP_SYNCED" = true ]; then
+    echo "✓ System clock synchronized: $(date)"
 else
-    # Fallback: find any user with UID >= 1000
-    SETUP_USER=$(awk -F: '$3 >= 1000 && $3 < 65000 {print $1; exit}' /etc/passwd)
-    if [ -z "$SETUP_USER" ]; then
-        SETUP_USER="pi"
+    echo "WARNING: NTP sync timeout. Current time: $(date)"
+    echo "Attempting to continue anyway..."
+    # Try to set a reasonable time as fallback
+    # This at least prevents "certificate not yet valid" errors
+    if [ "$(date +%Y)" -lt 2025 ]; then
+        echo "Clock is severely wrong, attempting manual time set..."
+        date -s "2026-01-07 12:00:00" 2>/dev/null || true
     fi
-    echo "WARNING: Expected user '$PI_NAME' not found, using: $SETUP_USER"
 fi
+echo ""
 
+# Get current user (the one created during image config)
+# IMPORTANT: Only list directories, not files
+SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" | head -1)
 SETUP_HOME="/home/$SETUP_USER"
 
-# ===================================
-# Step 5: Install Node.js using nvm
-# ===================================
+if [ -z "$SETUP_USER" ] || [ ! -d "$SETUP_HOME" ]; then
+    echo "ERROR: Could not detect user. Found: '$SETUP_USER'"
+    echo "Contents of /home:"
+    ls -la /home
+    echo "Attempting fallback detection..."
+    # Fallback: look for a directory that looks like a username (not a script)
+    SETUP_USER=$(ls -d /home/*/ 2>/dev/null | grep -v "lost+found" | head -1 | xargs -r basename)
+    SETUP_HOME="/home/$SETUP_USER"
+fi
+
+echo "Running setup for user: $SETUP_USER"
+echo "Home directory: $SETUP_HOME"
 echo ""
-echo "Step 5: Installing Node.js 24..."
+
+# Step 1: Install Node.js using nvm
+echo ""
+echo "Step 1: Installing Node.js 24 using nvm..."
 
 export NVM_DIR="$SETUP_HOME/.nvm"
 
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep -oP '"tag_name": "\K[^"]+' || echo "v0.40.1")
+    echo "Fetching latest nvm version..."
+    NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep -oP '"tag_name": "\K[^"]+' || echo "")
+    
+    if [ -z "$NVM_VERSION" ]; then
+        echo "Could not fetch latest version, using v0.40.1 as fallback"
+        NVM_VERSION="v0.40.1"
+    else
+        echo "Latest nvm version: $NVM_VERSION"
+    fi
+    
+    echo "Installing nvm..."
     sudo -u "$SETUP_USER" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash"
 fi
 
+# Source nvm and install Node
+echo "Installing Node.js 24..."
 sudo -u "$SETUP_USER" bash -c "
     export NVM_DIR='$NVM_DIR'
     [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+    [ -s \"\$NVM_DIR/bash_completion\" ] && source \"\$NVM_DIR/bash_completion\"
     nvm install 24
     nvm alias default 24
-    echo \"Node.js: \$(node -v)\"
+    nvm use 24
+    echo \"Node.js installed: \$(node -v)\"
+    echo \"NPM version: \$(npm -v)\"
 "
+
 echo "✓ Node.js installed"
 
-# ===================================
-# Step 6: Install PM2
-# ===================================
+# Step 2: Install PM2
 echo ""
-echo "Step 6: Installing PM2..."
-
+echo "Step 2: Installing PM2..."
 sudo -u "$SETUP_USER" bash -c "
     export NVM_DIR='$NVM_DIR'
     [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
     npm install -g pm2
+    echo \"PM2 installed: \$(pm2 -v)\"
 "
 echo "✓ PM2 installed"
 
-# ===================================
-# Step 7: Install system dependencies
-# ===================================
+# Step 3: Install Git
 echo ""
-echo "Step 7: Installing dependencies..."
-
+echo "Step 3: Installing Git and build tools..."
 apt-get update
-apt-get install -y git build-essential python3 make g++ 2>&1 || true
-apt-get install -y libcap-dev python3-dev python3-libcamera python3-picamera2 libcamera-dev 2>&1 || true
 
-# Install uv
-sudo -u "$SETUP_USER" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh' 2>&1 || true
-if ! grep -q "\.local/bin" "$SETUP_HOME/.bashrc" 2>/dev/null; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SETUP_HOME/.bashrc"
-    chown "$SETUP_USER:$SETUP_USER" "$SETUP_HOME/.bashrc"
+# Install git if not present
+if ! command -v git &> /dev/null; then
+    apt-get install -y git
 fi
-echo "✓ Dependencies installed"
+echo "Git installed: $(git --version)"
 
-# ===================================
-# Step 8: Clone and deploy Qoom
-# ===================================
+# Install build tools required for native modules (node-pty, etc.)
+echo "Installing build tools for native modules..."
+apt-get install -y build-essential python3 make g++ 2>&1 || echo "Warning: Some build tools may not have installed"
+
+# Install development libraries for AIoT/camera projects (picamera2, etc.)
+echo "Installing development libraries for AIoT projects..."
+apt-get install -y \
+    libcap-dev \
+    python3-dev \
+    python3-libcamera \
+    python3-picamera2 \
+    libcamera-dev \
+    2>&1 || echo "Warning: Some AIoT dependencies may not have installed"
+
+# Install uv (fast Python package manager)
+echo "Installing uv (Python package manager)..."
+if ! command -v uv &> /dev/null; then
+    # Install uv for the user (not root)
+    sudo -u "$SETUP_USER" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh' 2>&1 || echo "Warning: uv installation may have failed"
+    
+    # Add uv to PATH in user's bashrc if not already there
+    if ! grep -q "\.local/bin" "$SETUP_HOME/.bashrc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SETUP_HOME/.bashrc"
+        chown "$SETUP_USER:$SETUP_USER" "$SETUP_HOME/.bashrc"
+    fi
+    echo "✓ uv installed"
+else
+    echo "uv is already installed: $(uv --version)"
+fi
+
+echo "✓ Git, build tools, and uv installed"
+
+# Step 4: Clone Qoom application from GitHub
 echo ""
-echo "Step 8: Cloning Qoom application..."
-
+echo "Step 4: Cloning Qoom application from GitHub..."
 REPO_DIR="$SETUP_HOME/qoom"
 REPO_URL="https://github.com/Qoomio/AIoT.git"
 
-[ -d "$REPO_DIR" ] && rm -rf "$REPO_DIR"
+# Remove existing directory if it exists
+if [ -d "$REPO_DIR" ]; then
+    echo "Removing existing qoom directory..."
+    rm -rf "$REPO_DIR"
+fi
 
+# Clone the repository
+echo "Cloning from $REPO_URL..."
 sudo -u "$SETUP_USER" git clone "$REPO_URL" "$REPO_DIR" 2>&1
 
 if [ -d "$REPO_DIR" ]; then
     chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR"
+    echo "✓ Qoom application cloned successfully"
     
-    # Copy AIoT code to projects folder
+    # Copy AIoT code from cloned repo to projects folder
     if [ -d "$REPO_DIR/code" ]; then
+        echo ""
+        echo "Copying AIoT kit code to projects folder..."
+        # Create projects folder as the user (not root) to ensure proper ownership
         sudo -u "$SETUP_USER" mkdir -p "$REPO_DIR/projects/aiot"
+        # Copy files and ensure proper ownership
         cp -r "$REPO_DIR/code/." "$REPO_DIR/projects/aiot/"
+        # Ensure the entire projects directory tree is owned by the user
         chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR/projects"
+        echo "  ✓ AIoT code copied to $REPO_DIR/projects/aiot/"
+        
+        # List the copied files
+        echo "  Files:"
+        ls -la "$REPO_DIR/projects/aiot/"
+    else
+        echo "Note: No code/ folder found in cloned repository"
     fi
     
-    # Create logs directory
-    sudo -u "$SETUP_USER" mkdir -p "$SETUP_HOME/logs"
+    # Step 5: Run the deployment script
+    echo ""
+    echo "Step 5: Running deployment script..."
+    echo "This will install dependencies and start the application..."
     
-    # Deploy the application
-    echo "Installing npm dependencies..."
+    # Create logs directory with proper ownership (used by PM2)
+    sudo -u "$SETUP_USER" mkdir -p "$SETUP_HOME/logs"
+    echo "  ✓ Logs directory created"
+    
+    # The deploy_aiot.sh script handles npm install and PM2 start
+    # We need to run it inline (not in background) for first boot
     sudo -u "$SETUP_USER" bash -c "
         export NVM_DIR='$NVM_DIR'
         export NODE_ENV='education'
         [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
         cd '$REPO_DIR'
+        
+        # Check if uv is installed, install if not
+        if ! command -v uv &> /dev/null; then
+            echo 'Installing uv...'
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+        fi
+        
+        echo 'Installing npm packages...'
         npm install
-        npm run build:editer 2>&1 || true
+        
+        # Build the editer bundle (required for the editor to work)
+        echo 'Building editer bundle...'
+        npm run build:editer 2>&1 || echo 'Warning: editer build failed, may not have build script'
+        
+        # Delete existing pm2 process if any
         pm2 delete aiot 2>/dev/null || true
+        
+        # Start new pm2 process using ecosystem config
+        echo 'Starting application with PM2...'
         pm2 start ecosystem.config.cjs
+        
+        # Save pm2 configuration
         pm2 save
+        
+        echo 'Deployment completed!'
     "
-    echo "✓ Application deployed"
+    echo "✓ Application deployed and started"
+    
+    # Verify the app is running
+    echo ""
+    echo "Checking application status..."
+    sudo -u "$SETUP_USER" bash -c "
+        export NVM_DIR='$NVM_DIR'
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+        pm2 list
+    "
 else
-    echo "ERROR: Failed to clone repository"
+    echo -e "ERROR: Failed to clone repository from $REPO_URL"
+    echo "Please check network connectivity and try cloning manually:"
+    echo "  git clone $REPO_URL ~/qoom"
 fi
 
-# ===================================
-# Step 9: Configure PM2 startup
-# ===================================
+# Step 6: Setup Python/AIoT projects with system-site-packages
 echo ""
-echo "Step 9: Configuring PM2 auto-start..."
+echo "Step 6: Setting up Python/AIoT projects..."
 
-PM2_STARTUP=$(sudo -u "$SETUP_USER" bash -c "
+# Function to setup a Python project with system-site-packages for uv
+setup_python_project() {
+    local project_dir="$1"
+    local project_name=$(basename "$project_dir")
+    
+    if [ -f "$project_dir/pyproject.toml" ] || [ -f "$project_dir/requirements.txt" ]; then
+        echo "  Setting up $project_name..."
+        
+        # Create venv with uv
+        sudo -u "$SETUP_USER" bash -c "
+            export PATH=\"\$HOME/.local/bin:\$PATH\"
+            cd '$project_dir'
+            uv venv 2>&1
+        "
+        
+        # Patch pyvenv.cfg to enable system-site-packages (for libcamera, picamera2, etc.)
+        local pyvenv_cfg="$project_dir/.venv/pyvenv.cfg"
+        if [ -f "$pyvenv_cfg" ]; then
+            if grep -q "include-system-site-packages" "$pyvenv_cfg"; then
+                sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' "$pyvenv_cfg"
+            else
+                echo "include-system-site-packages = true" >> "$pyvenv_cfg"
+            fi
+            chown "$SETUP_USER:$SETUP_USER" "$pyvenv_cfg"
+        fi
+        
+        echo "  ✓ $project_name ready (use 'uv run main.py')"
+    fi
+}
+
+# Setup aiot and other Python projects in the projects folder
+if [ -d "$REPO_DIR/projects" ]; then
+    for project in "$REPO_DIR/projects"/*/; do
+        if [ -d "$project" ]; then
+            setup_python_project "$project"
+        fi
+    done
+fi
+echo "✓ Python projects configured"
+
+# Final ownership fix - ensure all files created during setup are owned by the user
+# This catches any files that may have been created by root during the setup process
+echo ""
+echo "Fixing file ownership..."
+if [ -d "$REPO_DIR" ]; then
+    chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR"
+    echo "  ✓ $REPO_DIR ownership fixed"
+fi
+if [ -d "$SETUP_HOME/logs" ]; then
+    chown -R "$SETUP_USER:$SETUP_USER" "$SETUP_HOME/logs"
+    echo "  ✓ $SETUP_HOME/logs ownership fixed"
+fi
+echo "✓ File ownership corrected"
+
+# Step 7: Setup PM2 startup (auto-start on boot)
+echo ""
+echo "Step 7: Configuring PM2 auto-start on boot..."
+
+# Get the PM2 startup command and execute it
+PM2_STARTUP_OUTPUT=$(sudo -u "$SETUP_USER" bash -c "
     export NVM_DIR='$NVM_DIR'
     [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
     pm2 startup systemd -u $SETUP_USER --hp $SETUP_HOME 2>&1
 " || true)
 
-STARTUP_CMD=$(echo "$PM2_STARTUP" | grep "sudo env" || true)
-[ -n "$STARTUP_CMD" ] && eval "$STARTUP_CMD" 2>/dev/null || true
+echo "$PM2_STARTUP_OUTPUT"
 
+# Extract and execute the startup command
+STARTUP_CMD=$(echo "$PM2_STARTUP_OUTPUT" | grep "sudo env" || true)
+
+if [ -n "$STARTUP_CMD" ]; then
+    echo "Executing PM2 startup command..."
+    eval "$STARTUP_CMD" || echo "Warning: PM2 startup command may have failed"
+    
+    # Verify the systemd service was created
+    if systemctl list-unit-files | grep -q "pm2-" 2>/dev/null; then
+        echo "✓ PM2 systemd service created"
+    fi
+fi
+
+# Save the current PM2 process list
 sudo -u "$SETUP_USER" bash -c "
     export NVM_DIR='$NVM_DIR'
     [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
@@ -1412,79 +1692,105 @@ sudo -u "$SETUP_USER" bash -c "
 "
 echo "✓ PM2 startup configured"
 
-# ===================================
-# Step 10: Final cleanup
-# ===================================
-echo ""
-echo "Step 10: Cleanup..."
-
-# Fix ownership
-chown -R "$SETUP_USER:$SETUP_USER" "$REPO_DIR" 2>/dev/null || true
-chown -R "$SETUP_USER:$SETUP_USER" "$SETUP_HOME/logs" 2>/dev/null || true
-
-# Disable this service
+# Cleanup - disable this first-boot service so it doesn't run again
 systemctl disable qoom-firstboot.service 2>/dev/null || true
 
+# Get local IP address for display
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 
 echo ""
 echo "======================================"
-echo "Qoom Setup Complete!"
+echo "Qoom First-Boot Setup Complete!"
 echo "======================================"
 echo ""
-echo "  Hostname: $PI_NAME"
-echo "  User: $SETUP_USER"
+echo "Summary:"
+echo "  ✓ Node.js 24 installed"
+echo "  ✓ PM2 installed and configured"
+echo "  ✓ Git installed"
+echo "  ✓ Qoom application cloned from GitHub"
+echo "  ✓ Application deployed: $REPO_DIR"
+echo ""
+echo "Access your Pi locally:"
 echo "  Web: http://${LOCAL_IP}:3000"
 echo "  SSH: ssh $SETUP_USER@${LOCAL_IP}"
 echo ""
-echo "Completed at: $(date)"
+echo "To update the application:"
+echo "  cd ~/qoom && bash scripts/deploy_aiot.sh"
+echo ""
+echo "Useful commands:"
+echo "  pm2 list                           - View running processes"
+echo "  pm2 logs                           - View application logs"
+echo "  pm2 restart all                    - Restart the application"
+echo "  cat /var/log/qoom-setup.log        - View this setup log"
+echo ""
+echo "Setup completed at: $(date)"
+echo ""
+
+# ===================================
+# Cleanup: Remove firstrun.sh trigger from cmdline.txt
+# ===================================
+echo "Cleaning up firstrun configuration..."
+
+# Restore cmdline.txt to original (remove systemd.run parameters)
+CMDLINE_FILE="/boot/firmware/cmdline.txt"
+if [ -f "$CMDLINE_FILE" ]; then
+    # Remove the systemd.run parameters we added
+    sed -i 's/ systemd.run=[^ ]*//g' "$CMDLINE_FILE"
+    sed -i 's/ systemd.run_success_action=[^ ]*//g' "$CMDLINE_FILE"
+    sed -i 's/ systemd.unit=kernel-command-line.target//g' "$CMDLINE_FILE"
+    echo "✓ cmdline.txt restored"
+fi
+
+# Rename firstrun.sh so it won't run again (keep for reference)
+FIRSTRUN_SCRIPT="/boot/firmware/firstrun.sh"
+if [ -f "$FIRSTRUN_SCRIPT" ]; then
+    mv "$FIRSTRUN_SCRIPT" "/boot/firmware/firstrun.sh.completed"
+    echo "✓ firstrun.sh renamed to firstrun.sh.completed"
+fi
+
+echo ""
+echo "First-boot setup complete! The Pi will now reboot..."
+echo "After reboot, access Qoom at: http://${LOCAL_IP}:3000"
+echo ""
 QOOM_SETUP_EOF
 
-    # Replace placeholders in setup script
-    if [ "$OS_TYPE" = "mac" ]; then
-        if command -v gsed &>/dev/null; then
-            gsed -i "s|__PI_NAME__|$PI_NAME|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            gsed -i "s|__WIFI_SSID__|$WIFI_SSID|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            gsed -i "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            gsed -i "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-        else
-            sed -i '' "s|__PI_NAME__|$PI_NAME|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            sed -i '' "s|__WIFI_SSID__|$WIFI_SSID|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            sed -i '' "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-            sed -i '' "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-        fi
-    else
-        sed -i "s|__PI_NAME__|$PI_NAME|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-        sed -i "s|__WIFI_SSID__|$WIFI_SSID|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-        sed -i "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-        sed -i "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-    fi
-    chmod +x "$ROOT_MOUNT/opt/qoom/firstboot-setup.sh"
-    
-    # Create systemd service for first-boot
-    cat > "$ROOT_MOUNT/etc/systemd/system/qoom-firstboot.service" << EOF
-[Unit]
-Description=Qoom First Boot Setup
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/qoom/firstboot-setup.sh
-RemainAfterExit=yes
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    # Enable the service via symlink
-    mkdir -p "$ROOT_MOUNT/etc/systemd/system/multi-user.target.wants"
-    ln -sf /etc/systemd/system/qoom-firstboot.service "$ROOT_MOUNT/etc/systemd/system/multi-user.target.wants/qoom-firstboot.service"
-    
-    echo "✓ First-boot setup script created"
+# Replace placeholders in setup script (use platform-appropriate sed)
+FIRSTRUN_SCRIPT="$BOOT_MOUNT/firstrun.sh"
+if [ "$OS_TYPE" = "mac" ]; then
+    sed -i '' "s|__PI_NAME__|$PI_NAME|g" "$FIRSTRUN_SCRIPT"
+    sed -i '' "s|__WIFI_SSID__|$WIFI_SSID|g" "$FIRSTRUN_SCRIPT"
+    sed -i '' "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$FIRSTRUN_SCRIPT"
+    sed -i '' "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$FIRSTRUN_SCRIPT"
+else
+    sed -i "s|__PI_NAME__|$PI_NAME|g" "$FIRSTRUN_SCRIPT"
+    sed -i "s|__WIFI_SSID__|$WIFI_SSID|g" "$FIRSTRUN_SCRIPT"
+    sed -i "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" "$FIRSTRUN_SCRIPT"
+    sed -i "s|__WIFI_COUNTRY__|$WIFI_COUNTRY|g" "$FIRSTRUN_SCRIPT"
 fi
+chmod +x "$FIRSTRUN_SCRIPT"
+
+# Modify cmdline.txt to run firstrun.sh on first boot
+# This is how Raspberry Pi Imager triggers first-boot scripts
+CMDLINE_FILE="$BOOT_MOUNT/cmdline.txt"
+if [ -f "$CMDLINE_FILE" ]; then
+    echo "Configuring cmdline.txt to run firstrun.sh on first boot..."
+    # Read current cmdline.txt and append the firstrun trigger
+    # We need to add: systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
+    CURRENT_CMDLINE=$(cat "$CMDLINE_FILE" | tr -d '\n')
+    
+    # Check if already modified
+    if echo "$CURRENT_CMDLINE" | grep -q "systemd.run="; then
+        echo "cmdline.txt already contains firstrun configuration"
+    else
+        # Append the firstrun trigger (keeping everything on one line is critical!)
+        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target" > "$CMDLINE_FILE"
+        echo "✓ cmdline.txt configured to run firstrun.sh"
+    fi
+else
+    echo -e "${YELLOW}Warning: cmdline.txt not found at expected location${NC}"
+fi
+
+echo "✓ First-boot setup script created on boot partition"
 
 # ===================================
 # STEP 11: Cleanup and Finish
@@ -1494,23 +1800,18 @@ echo -e "${GREEN}Step 11: Finishing up...${NC}"
 
 sync
 
-# Unmount partitions (platform-specific)
+# Unmount boot partition (platform-specific)
 if [ "$OS_TYPE" = "mac" ]; then
+    # On Mac, use diskutil for clean unmount
     umount "$BOOT_MOUNT" 2>/dev/null || diskutil unmount "$BOOT_MOUNT" 2>/dev/null || true
-    if [ "${ROOT_MOUNT_FAILED:-false}" != "true" ]; then
-        umount "$ROOT_MOUNT" 2>/dev/null || diskutil unmount "$ROOT_MOUNT" 2>/dev/null || true
-    fi
+    # Eject the disk for safe removal
     diskutil eject "/dev/$SD_DEVICE" 2>/dev/null || true
 else
     umount "$BOOT_MOUNT" 2>/dev/null || true
-    if [ "${ROOT_MOUNT_FAILED:-false}" != "true" ]; then
-        umount "$ROOT_MOUNT" 2>/dev/null || true
-    fi
 fi
 rmdir "$BOOT_MOUNT" 2>/dev/null || true
-rmdir "$ROOT_MOUNT" 2>/dev/null || true
 
-echo "✓ Partitions unmounted"
+echo "✓ Boot partition unmounted"
 
 # Save credentials to a file for user reference
 CREDS_FILE="$REAL_HOME/pi-credentials-${PI_NAME}.txt"
@@ -1610,4 +1911,3 @@ fi
 
 echo "The Raspberry Pi SD card is ready!"
 echo ""
-
