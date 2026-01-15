@@ -1097,7 +1097,11 @@ else
     echo "Creating WiFi configuration for $WIFI_SSID..."
     mkdir -p "$ROOT_MOUNT/etc/NetworkManager/system-connections"
     
-    cat > "$ROOT_MOUNT/etc/NetworkManager/system-connections/qoom-wifi.nmconnection" << EOF
+    # Remove any existing config (file or directory) with this name
+    WIFI_CONFIG_FILE="$ROOT_MOUNT/etc/NetworkManager/system-connections/qoom-wifi.nmconnection"
+    rm -rf "$WIFI_CONFIG_FILE" 2>/dev/null || true
+    
+    cat > "$WIFI_CONFIG_FILE" << EOF
 [connection]
 id=$WIFI_SSID
 uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "$(date +%s)-wifi-config")
@@ -1120,7 +1124,7 @@ method=auto
 method=auto
 EOF
     
-    chmod 600 "$ROOT_MOUNT/etc/NetworkManager/system-connections/qoom-wifi.nmconnection"
+    chmod 600 "$WIFI_CONFIG_FILE"
     echo "✓ WiFi configured"
     
     # Set hostname
