@@ -1564,19 +1564,50 @@ else
 fi
 echo ""
 
-# Get current user (the one created during image config)
-# IMPORTANT: Only list directories, not files
-SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" | head -1)
+# Wait for user account to be created from userconf.txt
+# This is necessary because systemd.run runs early in boot, potentially before
+# the userconf.txt processing service has created the user account.
+echo "Waiting for user account to be created from userconf.txt..."
+MAX_USER_WAIT=120
+USER_WAIT=0
+SETUP_USER=""
+
+while [ $USER_WAIT -lt $MAX_USER_WAIT ]; do
+    # Look for user home directory (created by userconf.txt processing)
+    SETUP_USER=$(find /home -maxdepth 1 -mindepth 1 -type d ! -name "lost+found" -printf "%f\n" 2>/dev/null | head -1)
+    
+    if [ -n "$SETUP_USER" ] && [ -d "/home/$SETUP_USER" ]; then
+        echo "✓ User account found: $SETUP_USER (after ${USER_WAIT}s)"
+        break
+    fi
+    
+    sleep 5
+    USER_WAIT=$((USER_WAIT + 5))
+    
+    if [ $((USER_WAIT % 15)) -eq 0 ]; then
+        echo "  Still waiting for user account... ($USER_WAIT/$MAX_USER_WAIT seconds)"
+        echo "  Contents of /home: $(ls /home 2>/dev/null || echo 'empty')"
+    fi
+done
+
 SETUP_HOME="/home/$SETUP_USER"
 
 if [ -z "$SETUP_USER" ] || [ ! -d "$SETUP_HOME" ]; then
-    echo "ERROR: Could not detect user. Found: '$SETUP_USER'"
+    echo "ERROR: User account was not created after $MAX_USER_WAIT seconds!"
+    echo "This means userconf.txt was not processed correctly."
     echo "Contents of /home:"
     ls -la /home
+    echo ""
     echo "Attempting fallback detection..."
     # Fallback: look for a directory that looks like a username (not a script)
     SETUP_USER=$(ls -d /home/*/ 2>/dev/null | grep -v "lost+found" | head -1 | xargs -r basename)
     SETUP_HOME="/home/$SETUP_USER"
+    
+    if [ -z "$SETUP_USER" ]; then
+        echo "CRITICAL: No user found. Cannot continue with setup."
+        echo "Please check the userconf.txt file on the boot partition."
+        # Don't exit - let the rest of the script try to run so we get logs
+    fi
 fi
 
 echo "Running setup for user: $SETUP_USER"
@@ -1945,8 +1976,7 @@ CMDLINE_FILE="$BOOT_MOUNT/cmdline.txt"
 if [ -f "$CMDLINE_FILE" ]; then
     echo "Configuring cmdline.txt to run firstrun.sh on first boot..."
     # Read current cmdline.txt and append the firstrun trigger
-    # Note: We do NOT use systemd.unit=kernel-command-line.target because that runs too early
-    # (before userconf.txt is processed). Without it, firstrun.sh runs after user creation.
+    # We need to add: systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
     CURRENT_CMDLINE=$(cat "$CMDLINE_FILE" | tr -d '\n')
     
     # Check if already modified
@@ -1954,7 +1984,7 @@ if [ -f "$CMDLINE_FILE" ]; then
         echo "cmdline.txt already contains firstrun configuration"
     else
         # Append the firstrun trigger (keeping everything on one line is critical!)
-        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot" > "$CMDLINE_FILE"
+        echo "${CURRENT_CMDLINE} systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target" > "$CMDLINE_FILE"
         echo "✓ cmdline.txt configured to run firstrun.sh"
     fi
 else
