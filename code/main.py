@@ -14,7 +14,7 @@ def main():
     # Save in the same directory as this script
     save_dir = os.path.dirname(os.path.abspath(__file__))
     os.makedirs(save_dir, exist_ok=True)
-3
+
     picam2 = Picamera2()
     picam2.configure(picam2.create_still_configuration())
     picam2.start()
