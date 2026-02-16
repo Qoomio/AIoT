@@ -6,14 +6,20 @@
 # Pulls from public repo: https://github.com/Qoomio/AIoT.git
 
 REPO_URL="https://github.com/Qoomio/AIoT.git"
+QOOM_DIR="$HOME/qoom"
 
 {
-    if [[ "$NODE_ENV" != "education" && "$NODE_ENV" != "EDUCATION" ]]; then
-        echo "Aborting deployment: NODE_ENV is not 'education'. Current NODE_ENV='$NODE_ENV'"
+    if [[ "$NODE_ENV" != "user" && "$NODE_ENV" != "USER" ]]; then
+        echo "Aborting deployment: NODE_ENV is not 'user'. Current NODE_ENV='$NODE_ENV'"
         exit 1
     fi
     echo "Starting deployment process..."
     echo "Timestamp: $(date)"
+    
+    # Change to the qoom directory
+    echo "Changing to QOOM_DIR: $QOOM_DIR"
+    cd "$QOOM_DIR" || { echo "Error: Failed to cd to $QOOM_DIR"; exit 1; }
+    echo "Current directory: $(pwd)"
     
     # STOP PM2 FIRST - before any file changes happen
     # This prevents the watcher from seeing the file chaos during git pull
