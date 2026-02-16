@@ -32,6 +32,7 @@ import * as history from '../components/versioner/frontend/history.js';
 import * as monacoSettings from '../components/monaco-settings/frontend/monaco-settings.js';
 import * as notifier from '../components/notifier/frontend/notify.js'
 import * as previewer from '../components/previewer/frontend/previewer.js';
+import * as publisher from '../../publisher/frontend/publisher.js';
 
 const dom = {
     controls: document.querySelector('.controls'),
@@ -305,6 +306,7 @@ function initializeEvents() {
     qoomEvent.on('addNewTab', updateUrl);
     qoomEvent.on('closedTabs', updateUrl);
     qoomEvent.on('activeTabChangedInPane', updateUrl);
+    qoomEvent.on('activeFilePathChanged', updateUrl);
 
     // qoomEvent.on('showNotification', showNotification);
     
@@ -413,6 +415,7 @@ async function initialize() {
             monacoSettings.initialize(editerState),
             notifier.initialize(editerState),
             previewer.initialize(editerState),
+            publisher.initialize(editerState),
         ]);
         
        updateGridTemplateColumns();

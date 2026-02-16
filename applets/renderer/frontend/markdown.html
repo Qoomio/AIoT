@@ -54,23 +54,25 @@
     <div class="refresh-indicator" id="refreshIndicator">Content updated</div>
     <div id="content">Loading markdown...</div>
     
-    <!-- Use local standalone marked library -->
-    <script src="/view/applets/renderer/frontend/lib/marked.min.js"></script>
+    <!-- Use local standalone markdown-it library (same as VS Code) -->
+    <script src="/view/applets/renderer/frontend/lib/markdown-it.min.js"></script>
     <script type="module">
         import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
-        // Wait for marked library to load, then fetch and render markdown
+        
+        // Initialize markdown-it with GFM-like options
+        const md = window.markdownit({
+            html: true,        // Enable HTML tags in source
+            breaks: true,      // Convert \n to <br>
+            linkify: true,     // Auto-convert URLs to links
+            typographer: true  // Enable smart quotes and dashes
+        });
+        
         function loadMarkdown() {
-            if (typeof marked === 'undefined') {
-                // If marked isn't loaded yet, wait and try again
+            if (typeof window.markdownit === 'undefined') {
+                // If markdown-it isn't loaded yet, wait and try again
                 setTimeout(loadMarkdown, 100);
                 return;
             }
-            
-            // Configure marked for better rendering
-            marked.setOptions({
-                breaks: true,
-                gfm: true
-            });
             
             fetch('{{MARKDOWN_URL}}')
                 .then(response => {
@@ -81,7 +83,9 @@
                 })
                 .then(text => {
                     try {
-                        document.getElementById('content').innerHTML = marked.parse(text);
+                        // Normalize tabs to spaces for consistent table parsing
+                        const normalizedText = text.replace(/\t/g, '    ');
+                        document.getElementById('content').innerHTML = md.render(normalizedText);
                     } catch (parseError) {
                         throw new Error('Failed to parse markdown: ' + parseError.message);
                     }

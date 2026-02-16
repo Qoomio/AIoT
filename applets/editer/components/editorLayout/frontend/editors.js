@@ -15,6 +15,7 @@ let editorLayout = null;
 let remoteUserCursor = null; // 원격 사용자 정보 저장 (1:1 관계)
 let cursorChangeListeners = []; // 커서 변경 리스너 저장
 let remoteDecorations = []; // 각 pane의 원격 decoration ID 저장
+let serverBootId = null; // Server boot ID for restart detection
 
 const maxReconnectAttempts = 5;
 
@@ -293,7 +294,12 @@ function normalizePath(filePath) {
 
 function initializeFileSync() {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-	const wsUrl = `${protocol}//${window.location.host}/watcher/_sync`;
+	let wsUrl = `${protocol}//${window.location.host}/watcher/_sync`;
+	
+	// If we have a bootId from previous connection, pass it for restart detection
+	if (serverBootId) {
+		wsUrl += `?bootId=${encodeURIComponent(serverBootId)}`;
+	}
 
 	console.log("[SYNC] Connecting to file sync WebSocket:", wsUrl);
 
@@ -360,13 +366,25 @@ function initializeFileSync() {
 
 function handleSyncMessage(message) {
 	const {
-		type, filePath, content, clientId, files
+		type, filePath, content, clientId, files, bootId
 	} = message;
 	console.log("[SYNC] Received message:", type);
 	switch (type) {
 		case "connection_established":
 			console.log("[SYNC] Client ID assigned:", clientId);
+			// Store bootId for restart detection on reconnect
+			if (bootId) {
+				serverBootId = bootId;
+				window.__QOOM_BOOT_ID = bootId;
+				console.log("[SYNC] Server boot ID:", bootId);
+			}
 			updateWatchedFiles();
+			break;
+		
+		case "service_restarted":
+			// Server has restarted - reload the page to get fresh state
+			console.log("[SYNC] Service restart detected, reloading page...");
+			window.location.reload();
 			break;
 
 		case "file_changed":
@@ -416,6 +434,7 @@ function handleSyncMessage(message) {
 
 		case "file_renamed":
 			console.log("[SYNC] File renamed:", message.oldPath, "->", message.newPath);
+			handleFileRename(message.oldPath, message.newPath);
 			state.fileRenamed();
 			break;
 
@@ -708,47 +727,70 @@ function updateRemoteCursorDecorations() {
 
 function handleFileRename(oldPath, newPath) {
 	console.log("[SYNC] Handling file rename:", oldPath, "->", newPath);
+	const normalizedOldPath = normalizePath(oldPath);
+	const normalizedNewPath = normalizePath(newPath);
 	
 	// Update all tabs that reference the old file path
 	let tabsUpdated = 0;
+	let activeTabRenamed = false;
 	
 	editorLayout.panes.forEach(pane => {
 		pane.tabs.forEach(tab => {
-			if (tab.filePath === oldPath) {
-				// Update the tab's file path and name
-				tab.filePath = newPath;
-				tab.fileName = newPath.split('/').pop(); // Extract filename from path
-				
+			const normalizedTabPath = normalizePath(tab.filePath);
+			let newTabPath = null;
+			
+			// Check for exact match (file rename) OR prefix match (folder rename)
+			if (normalizedTabPath === normalizedOldPath) {
+				// Exact match: file was renamed directly
+				newTabPath = normalizedNewPath;
+			} else if (normalizedTabPath.startsWith(normalizedOldPath + '/')) {
+				// Prefix match: file is inside a renamed folder
+				newTabPath = normalizedNewPath + normalizedTabPath.substring(normalizedOldPath.length);
+			}
+			
+			if (newTabPath) {
+				// Update the tab's file path using the tab method
+				tab.updateFilePath(newTabPath);
+				if (pane.activeTab?.id === tab.id) {
+					activeTabRenamed = true;
+				}
+
 				// Update tab display if method exists
 				if (tab.updateDisplay) {
 					tab.updateDisplay();
 				}
 				
 				// Update tab title in UI
-				const tabElement = document.querySelector(`[data-tab-id="${tab.id}"]`);
+				const tabElement = document.querySelector(`.tab[data-tab="${tab.id}"]`);
 				if (tabElement) {
-					const titleElement = tabElement.querySelector('.tab-title');
+					tabElement.setAttribute('data-file-path', newTabPath);
+					const titleElement = tabElement.querySelector('.tab-name');
 					if (titleElement) {
 						titleElement.textContent = tab.fileName;
+						titleElement.setAttribute('title', tab.fileName);
 					}
 				}
 				
 				tabsUpdated++;
-				console.log("[SYNC] Updated tab:", tab.id, "to new path:", newPath);
+				console.log("[SYNC] Updated tab:", tab.id, "to new path:", newTabPath);
 			}
 		});
 	});
 	
 	if (tabsUpdated > 0) {
-		console.log(`[SYNC] Updated ${tabsUpdated} tab(s) for renamed file`);
+		console.log(`[SYNC] Updated ${tabsUpdated} tab(s) for renamed file/folder`);
 		
 		// Update file watching list to include new path
 		updateWatchedFiles();
 		
 		// Show notification to user
-		const oldFileName = oldPath.split('/').pop();
-		const newFileName = newPath.split('/').pop();
+		const oldFileName = normalizedOldPath.split('/').pop();
+		const newFileName = normalizedNewPath.split('/').pop();
 		showSaveNotification(`File renamed: ${oldFileName} → ${newFileName}`, "info");
+
+		if (activeTabRenamed) {
+			qoomEvent.emit('activeFilePathChanged', { oldPath: normalizedOldPath, newPath: normalizedNewPath });
+		}
 	}
 }
 
@@ -867,6 +909,12 @@ function setupEditorsEventListeners() {
 	qoomEvent.on('editorCreated', () => {
 		// 에디터가 생성되면 원격 커서 추적 설정
 		setupRemoteCursorTracking();
+	});
+
+	qoomEvent.on('fileRenamed', (e) => {
+		const { oldPath, newPath } = e.detail || {};
+		if (!oldPath || !newPath) return;
+		handleFileRename(oldPath, newPath);
 	});
 }
 

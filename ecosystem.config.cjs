@@ -6,7 +6,7 @@ module.exports = {
 		  "instances": 1,
 		  "exec_mode": "fork",
 		  "env": {
-		    "NODE_ENV": "education",
+		    "NODE_ENV": "user",
 		    "HIDE_AI_PANE": true,
 		    "PORT": 3000,
 		    "HOST": "0.0.0.0",

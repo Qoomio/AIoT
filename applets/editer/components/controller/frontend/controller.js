@@ -144,7 +144,7 @@ function setupControllerEvents() {
             const res = await fetch('/updater/deploy', { method: 'POST' });
             if (!res.ok) throw new Error('Failed to start deploy');
 
-            const restarted = await waitForServiceRestart(currentBootId, 120000);
+            const restarted = await waitForServiceRestart(currentBootId, 15 * 1000 * 60);
             if (!restarted) {
                 location.reload();
                 return;
@@ -221,9 +221,9 @@ function initializeController() {
     settingsButton = document.querySelector('#monaco-settings-button');
     updateButton = document.querySelector('#update-button');
 
-    // Hide update button if not in education mode
+    // Hide update button if a developer
     const nodeEnv = window.__QOOM_CONFIG?.NODE_ENV || 'development';
-    if (nodeEnv !== 'education') {
+    if (nodeEnv === 'development') {
         updateButton.style.display = 'none';
     }
 

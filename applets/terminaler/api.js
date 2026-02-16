@@ -60,7 +60,6 @@ function saveSessionState(sessionId, sessionData) {
             terminalBuffer: sessionData.terminalBuffer || null
         };
         fs.writeFileSync(sessionFile, JSON.stringify(stateData, null, 2));
-        console.log(`Session state saved: ${sessionId}`);
     } catch (error) {
         console.error(`Failed to save session state for ${sessionId}:`, error);
     }

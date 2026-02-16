@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Integration Manager</title>
+    <style>
+        :root { --primary: #0969da; --success: #2da44e; --bg: #f6f8fa; --border: #d0d7de; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background-color: var(--bg); color: #24292f; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 800px; background: white; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 3px 6px rgba(140,149,159,0.15); overflow: hidden; }
+        
+        /* 헤더 */
+        .header { background: #24292f; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { margin: 0; font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        
+        /* 섹션 공통 */
+        .section { padding: 32px; display: none; } /* 기본적으로 숨김 */
+        .section.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        
+        /* 로그인 섹션 스타일 */
+        .login-box { text-align: center; padding: 20px 0; }
+        .code-display { background: #f6f8fa; border: 1px dashed var(--border); padding: 20px; margin: 20px 0; border-radius: 6px; }
+        .user-code { font-size: 32px; font-weight: 800; color: var(--primary); letter-spacing: 4px; display: block; margin-bottom: 10px; }
+        .step-text { color: #57606a; margin-bottom: 10px; font-size: 14px; }
+        
+        /* 레포 관리 섹션 스타일 */
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; background: #f6f8fa; padding: 15px; border-radius: 6px; align-items: center; }
+        input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+        
+        .repo-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border); border-radius: 6px; }
+        .repo-item { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .repo-item:last-child { border-bottom: none; }
+        .repo-name { font-weight: 600; color: var(--primary); text-decoration: none; font-size: 16px; }
+        .repo-name:hover { text-decoration: underline; }
+
+        /* 버튼 */
+        .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid rgba(27,31,35,0.15); font-weight: 500; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-primary { background-color: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background-color: #085ebd; }
+        .btn-success { background-color: var(--success); color: white; border: none; }
+        .btn-success:hover { background-color: #268e43; }
+        .btn-outline { background: white; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>
+            <svg height="24" viewBox="0 0 16 16" width="24" fill="white"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+            GitHub Manager
+        </h1>
+        <span id="userInfo" style="font-size: 14px; opacity: 0.8;">Checking login...</span>
+    </div>
+
+    <div id="loginSection" class="section">
+        <div class="login-box">
+            <h2>GitHub 연동이 필요합니다</h2>
+            <p style="color: #666; margin-bottom: 30px;">Qoom 프로젝트를 GitHub에 업로드하기 위해 로그인을 진행해주세요.</p>
+            
+            <button id="startAuthBtn" class="btn btn-primary" style="font-size: 16px; padding: 12px 24px;" onclick="startLogin()">
+                GitHub 로그인 시작
+            </button>
+
+            <div id="authStep" class="hidden">
+                <div class="code-display">
+                    <p class="step-text">1. 아래 코드를 복사하세요</p>
+                    <span id="userCode" class="user-code">----</span>
+                    <p class="step-text" style="margin-top:20px;">2. 아래 버튼을 눌러 GitHub에 코드를 붙여넣으세요</p>
+                    <a id="verificationLink" href="#" target="_blank" class="btn btn-outline">GitHub 인증 페이지 열기</a>
+                </div>
+                <p id="statusMsg" style="color: #0969da; font-weight: bold;">대기 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardSection" class="section">
+        <div class="dashboard-header">
+            <h3>내 레포지토리 관리</h3>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="loadRepos()">🔄 새로고침</button>
+                <button class="btn btn-outline" style="color: #cf222e; border-color: #cf222e;" onclick="logout()">
+                    로그아웃
+                </button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="newRepoName" placeholder="새로운 레포지토리 이름 (예: my-project)">
+            <label style="font-size: 14px; display:flex; align-items:center; cursor:pointer;">
+                <input type="checkbox" id="isPrivate" style="margin-right: 5px;"> Private
+            </label>
+            <button class="btn btn-success" onclick="createRepo()">생성하기</button>
+        </div>
+
+        <ul id="repoList" class="repo-list">
+            <li style="padding: 20px; text-align: center; color: #666;">로딩 중...</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // --- [설정] ---
+    const API_PREFIX = '/edit/publisher/_api';
+    let pollInterval = null;
+
+    // --- [초기화] 페이지 로드 시 로그인 상태 체크 ---
+    window.onload = checkLoginStatus;
+
+    // 1. 로그인 상태 확인 (토큰 유무 체크)
+    async function checkLoginStatus() {
+        try {
+            // 레포 목록을 요청해서 성공하면 로그인 된 것임
+            const res = await fetch(`${API_PREFIX}/github/repos`);
+            
+            if (res.status === 200) {
+                const json = await res.json();
+                if (json.success) {
+                    showDashboard(json.data); // 로그인 됨 -> 대시보드 보여주기
+                    return;
+                }
+            }
+            // 실패하면(401) 로그인 화면 보여주기
+            showLogin();
+        } catch (e) {
+            showLogin();
+        }
+    }
+
+    // 화면 전환 헬퍼
+    function showLogin() {
+        document.getElementById('loginSection').classList.add('active');
+        document.getElementById('dashboardSection').classList.remove('active');
+        document.getElementById('userInfo').innerText = 'Not Logged In';
+    }
+
+    function showDashboard(data) {
+        document.getElementById('loginSection').classList.remove('active');
+        document.getElementById('dashboardSection').classList.add('active');
+        
+        // 사용자 정보 표시
+        const user = data && data.gitUser ? data.gitUser : 'User';
+        document.getElementById('userInfo').innerText = `Logged in as ${user}`;
+        
+        // 목록 렌더링
+        renderRepoList(data.gitRepoList || [], user);
+    }
+
+    // [New] 로그아웃 기능
+    async function logout() {
+        if (!confirm("정말 로그아웃 하시겠습니까?\n(GitHub 연결이 해제됩니다)")) return;
+
+        try {
+            const res = await fetch(`${API_PREFIX}/github/config`, { 
+                method: 'DELETE' 
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                alert("로그아웃 되었습니다.");
+                // 화면을 즉시 로그인 대기 화면으로 전환
+                showLogin();
+                
+                // (선택사항) 입력 필드들 초기화
+                document.getElementById('repoList').innerHTML = '';
+                document.getElementById('newRepoName').value = '';
+            } else {
+                alert("로그아웃 실패: " + json.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("로그아웃 중 오류가 발생했습니다.");
+        }
+    }
+
+    // --- [기능 1] Device Flow 로그인 로직 ---
+    async function startLogin() {
+        const btn = document.getElementById('startAuthBtn');
+        const authStep = document.getElementById('authStep');
+        const userCodeEl = document.getElementById('userCode');
+        const linkEl = document.getElementById('verificationLink');
+
+        btn.disabled = true;
+        btn.innerText = "코드 요청 중...";
+
+        try {
+            const res = await fetch(`${API_PREFIX}/auth/github/device/code`, { method: 'POST' });
+            const json = await res.json();
+
+            if (!json.success) throw new Error(json.message);
+
+            const { user_code, verification_uri, device_code, interval } = json.data;
+
+            // UI 업데이트
+            userCodeEl.innerText = user_code;
+            linkEl.href = verification_uri;
+            btn.classList.add('hidden'); // 시작 버튼 숨김
+            authStep.classList.remove('hidden'); // 코드 영역 보임
+
+            // 폴링 시작
+            pollStatus(device_code, interval || 5);
+
+        } catch (e) {
+            alert('로그인 시작 실패: ' + e.message);
+            btn.disabled = false;
+        }
+    }
+
+// [수정됨] 동적 간격 조정을 위한 재귀적 폴링 함수
+    function pollStatus(deviceCode, initialInterval) {
+        const msg = document.getElementById('statusMsg');
+        let currentInterval = initialInterval;
+
+        // 재귀 함수 정의
+        const check = async () => {
+            try {
+                const res = await fetch(`${API_PREFIX}/auth/github/device/poll`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_code: deviceCode })
+                });
+                const json = await res.json();
+                const data = json.data || {};
+
+                if (json.success && data.status === 'complete') {
+                    // 1. 성공!
+                    msg.innerText = "✅ 인증 성공! 대시보드로 이동합니다...";
+                    msg.style.color = "var(--success)";
+                    setTimeout(checkLoginStatus, 1000); 
+                    // 여기서 재귀 종료
+
+                } else if (data.status === 'slow_down') {
+                    // 2. [중요] GitHub이 천천히 오라고 함 -> 간격 증가
+                    console.log(`GitHub 요청: 속도 낮춤 (현재 ${currentInterval}초 -> ${currentInterval + 5}초)`);
+                    
+                    // GitHub이 제안한 간격이 있으면 쓰고, 없으면 5초 추가
+                    if (data.interval) {
+                        currentInterval = data.interval;
+                    } else {
+                        currentInterval += 5;
+                    }
+                    
+                    // 늘어난 시간만큼 기다렸다가 다시 실행
+                    msg.innerText = `⏳ 인증 대기 중... (서버 부하 조절 중: ${currentInterval}초 대기)`;
+                    setTimeout(check, currentInterval * 1000);
+
+                } else if (data.status === 'pending') {
+                    // 3. 아직 인증 안함 -> 기존 간격대로 대기 후 재실행
+                    msg.innerText = "⏳ 인증 대기 중... (웹페이지에서 승인을 눌러주세요)";
+                    setTimeout(check, currentInterval * 1000);
+
+                } else {
+                    // 4. 진짜 에러 (만료 등)
+                    const errorText = data.error_description || "인증 실패/만료";
+                    msg.innerText = "❌ " + errorText;
+                    msg.style.color = "red";
+                }
+            } catch (e) {
+                console.error("네트워크 에러, 재시도...", e);
+                // 에러나도 일단 다시 시도 (안정성)
+                setTimeout(check, currentInterval * 1000);
+            }
+        };
+
+        // 최초 실행
+        check();
+    }
+
+    // --- [기능 2] 레포지토리 관리 로직 ---
+    async function loadRepos() {
+        const listEl = document.getElementById('repoList');
+        listEl.innerHTML = '<li style="padding:20px; text-align:center; color:#666;">새로고침 중...</li>';
+        
+        try {
+            const res = await fetch(`${API_PREFIX}/github/repos`);
+            const json = await res.json();
+            if (json.success) {
+                renderRepoList(json.data.gitRepoList, json.data.gitUser);
+            } else {
+                alert('목록 로드 실패');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderRepoList(repos, user) {
+        const listEl = document.getElementById('repoList');
+        listEl.innerHTML = '';
+
+        if (!repos || repos.length === 0) {
+            listEl.innerHTML = '<li style="padding:20px; text-align:center;">레포지토리가 없습니다.</li>';
+            return;
+        }
+
+        repos.forEach(repoName => {
+            const li = document.createElement('li');
+            li.className = 'repo-item';
+            li.innerHTML = `
+                <div>
+                    <a href="https://github.com/${user}/${repoName}" target="_blank" class="repo-name">
+                        ${repoName}
+                    </a>
+                </div>
+                <span style="font-size:12px; color:#666;">Public</span>
+            `;
+            listEl.appendChild(li);
+        });
+    }
+
+    async function createRepo() {
+        const nameInput = document.getElementById('newRepoName');
+        const isPrivate = document.getElementById('isPrivate').checked;
+        const name = nameInput.value.trim();
+
+        if (!name) return alert('레포지토리 이름을 입력하세요.');
+
+        if (!confirm(`'${name}' 레포지토리를 생성하시겠습니까?`)) return;
+
+        try {
+            const res = await fetch(`${API_PREFIX}/github/repos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repoName: name, isPrivate: isPrivate })
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                alert('성공적으로 생성되었습니다!');
+                nameInput.value = '';
+                loadRepos(); // 목록 갱신
+            } else {
+                alert('실패: ' + (json.message || json.data.originalError));
+            }
+        } catch (e) {
+            alert('에러 발생: ' + e.message);
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -229,6 +229,25 @@ class EditorTab {
         }
     }
 
+    updateFilePath(newPath) {
+        if (!newPath || newPath === this.#filePath) return;
+
+        const existingContent = this.#model ? this.#model.getValue() : null;
+        if (this.#model) {
+            this.#model.dispose();
+            this.#model = null;
+        }
+
+        this.#filePath = newPath;
+
+        if (existingContent !== null) {
+            const uri = window.monaco.Uri.file(this.#filePath);
+            const existingModel = window.monaco.editor.getModel(uri);
+            this.#model = existingModel || window.monaco.editor.createModel(existingContent, undefined, uri);
+            qoomEvent.emit('tabContentLoaded', this);
+        }
+    }
+
     equals(tab) {
         return this.paneId === tab.paneId && this.id === tab.id;
     }

@@ -115,6 +115,7 @@ function findApiFiles(dir, results = []) {
     
     // Get NODE_ENV for filtering student/teacher routes
     const nodeEnv = process.env.NODE_ENV || 'development';
+    const CHALLENGER_ROLE = process.env.CHALLENGER_ROLE;
 
     for (const file of files) {
       const filePath = path.join(dir, file);
@@ -127,14 +128,15 @@ function findApiFiles(dir, results = []) {
         // Only skip student/teacher directories inside challenger applet
         const isInsideChallenger = filePath.includes('/challenger/');
         
-        // Skip teacher directory inside challenger if NODE_ENV is 'student'
-        if (nodeEnv === 'student' && file === 'teacher' && isInsideChallenger) {
+        // Skip teacher directory inside challenger if CHALLENGER_ROLE is 'student'
+        if (CHALLENGER_ROLE === 'student' && file === 'teacher' && isInsideChallenger) {
           console.log(`Skipping teacher directory in student mode: ${filePath}`);
           continue;
         }
-        // Skip student directory inside challenger if NODE_ENV is 'teacher'
-        if (nodeEnv === 'teacher' && file === 'student' && isInsideChallenger) {
+        // Skip student directory inside challenger if CHALLENGER_ROLE is 'teacher'
+        if (CHALLENGER_ROLE === 'teacher' && file === 'student' && isInsideChallenger) {
           console.log(`Skipping student directory in teacher mode: ${filePath}`);
+          continue;
         }
         // Skip dist and node_modules directories (TypeScript build outputs)
         if (file === 'dist' || file === 'node_modules') {
@@ -670,7 +672,7 @@ async function createWebSocketServer() {
 
     console.log('WebSocket router initialized');
   } catch (error) {
-    console.error('Error setting up unified WebSocket router:', error.message);
+    console.log('WebSocket router not used');
   }
 }
 
@@ -680,13 +682,14 @@ function createServer() {
     if (req.url === '/' && req.method === 'GET') {
       // Redirect based on NODE_ENV or HOME_PAGE setting
       const nodeEnv = process.env.NODE_ENV || 'development';
+      const CHALLENGER_ROLE = process.env.CHALLENGER_ROLE;
       let homePage = process.env.HOME_PAGE;
       
       // Auto-set home page based on NODE_ENV if not explicitly set
       if (!homePage) {
-        if (nodeEnv === 'student') {
+        if (CHALLENGER_ROLE === 'student') {
           homePage = '/challenges';
-        } else if (nodeEnv === 'teacher') {
+        } else if (CHALLENGER_ROLE === 'teacher') {
           homePage = '/students';
         } else {
           homePage = '/admin';

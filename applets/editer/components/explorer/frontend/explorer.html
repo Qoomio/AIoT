@@ -92,81 +92,149 @@
   </div>
 
 <div id="create-file-modal" class="modal" style="display: none;">
-    <div class="modal-content">
-    <div class="modal-header">
-        <h3>Create New File</h3>
-        <span id="create-file-close" class="modal-close">&times;</span>
+  <div class="create-file-modal-content">
+    <div class="create-file-modal-header">
+      <h3>Create New File</h3>
+      <button type="button" id="create-file-close" class="create-file-close-btn" aria-label="Close">
+        <img src="/view/assets/ab1d94399957e76f55573113ee2b580c751a8270.svg" alt="" />
+      </button>
     </div>
-    <div class="modal-body">
-        <div class="form-group">
-        <label for="file-name">File Name:</label>
+    <div class="create-file-modal-body">
+      <div class="create-file-field">
+        <label for="file-name" class="create-file-label">File Name</label>
         <input
-            type="text"
-            id="file-name"
-            class="form-input"
-            placeholder="Enter file name (e.g., script.js, index.html)"
+          type="text"
+          id="file-name"
+          class="create-file-input"
+          placeholder="Enter file name (e.g., script.js, index.html)"
         />
+      </div>
+      <div class="create-file-field">
+        <label for="file-template" class="create-file-label">Template (optional)</label>
+        <div class="create-file-select-wrap">
+          <select id="file-template" class="create-file-select">
+            <option value="">No template</option>
+            <option value="html">HTML Template</option>
+            <option value="css">CSS Template</option>
+            <option value="javascript">JavaScript Template</option>
+            <option value="json">JSON Template</option>
+            <option value="markdown">Markdown Template</option>
+            <option value="node-module">Node.js Module Template</option>
+            <option value="test">Test File Template</option>
+          </select>
+          <img class="create-file-select-icon" src="/view/assets/565cef13462393062c83d6e2bf3d9db43136a820.svg" alt="" />
         </div>
-        <div class="form-group">
-        <label for="file-template">Template (optional):</label>
-        <select id="file-template" class="form-select">
-          <option value="">No template</option>
-          <option value="html">HTML Template</option>
-          <option value="css">CSS Template</option>
-          <option value="javascript">JavaScript Template</option>
-          <option value="json">JSON Template</option>
-          <option value="markdown">Markdown Template</option>
-          <option value="node-module">Node.js Module Template</option>
-          <option value="test">Test File Template</option>
-        </select>
-        </div>
-        <div class="form-group">
-        <label for="file-content">Initial Content:</label>
+      </div>
+      <div class="create-file-field">
+        <label for="file-content" class="create-file-label">Initial Content</label>
         <textarea
-            id="file-content"
-            class="form-textarea"
-            rows="6"
-            placeholder="Enter initial content (optional)"
+          id="file-content"
+          class="create-file-textarea"
+          placeholder="Enter initial content (optional)"
         ></textarea>
-        </div>
+      </div>
     </div>
-    <div class="modal-footer">
-        <button id="create-file-cancel" class="btn btn-secondary">
+    <div class="create-file-modal-footer">
+      <button id="create-file-cancel" class="create-file-btn create-file-btn-secondary">
         Cancel
-        </button>
-        <button id="create-file-submit" class="btn btn-primary">
+      </button>
+      <button id="create-file-submit" class="create-file-btn create-file-btn-primary">
         Create File
-        </button>
+      </button>
     </div>
-    </div>
+  </div>
 </div>
 
 
 <div id="create-folder-modal" class="modal" style="display: none;">
-    <div class="modal-content">
-    <div class="modal-header">
-        <h3>Create New Folder</h3>
-        <span id="create-folder-close" class="modal-close">&times;</span>
+  <div class="create-folder-modal-content">
+    <div class="create-folder-modal-header">
+      <h3>Create New Folder</h3>
+      <button type="button" id="create-folder-close" class="create-folder-close-btn" aria-label="Close">
+        <img src="/view/assets/ab1d94399957e76f55573113ee2b580c751a8270.svg" alt="" />
+      </button>
     </div>
-    <div class="modal-body">
-        <div class="form-group">
-        <label for="folder-name">Folder Name:</label>
+    <div class="create-folder-modal-body">
+      <div class="create-folder-field">
+        <label for="folder-name" class="create-folder-label">Folder Name</label>
         <input
-            type="text"
-            id="folder-name"
-            class="form-input"
-            placeholder="Enter folder name"
+          type="text"
+          id="folder-name"
+          class="create-folder-input"
+          placeholder="Enter folder name"
         />
-        </div>
+      </div>
     </div>
-    <div class="modal-footer">
-        <button id="create-folder-cancel" class="btn btn-secondary">
+    <div class="create-folder-modal-footer">
+      <button id="create-folder-cancel" class="create-folder-btn create-folder-btn-secondary">
         Cancel
-        </button>
-        <button id="create-folder-submit" class="btn btn-primary">
+      </button>
+      <button id="create-folder-submit" class="create-folder-btn create-folder-btn-primary">
         Create Folder
-        </button>
+      </button>
     </div>
+  </div>
+</div>
+
+  <div id="rename-item-modal" class="modal" style="display: none;">
+    <div class="rename-item-modal-content">
+      <div class="rename-item-modal-header">
+        <h3 id="rename-item-title">Rename</h3>
+        <button type="button" id="rename-item-close" class="rename-item-close-btn" aria-label="Close">
+          <img src="/view/assets/ab1d94399957e76f55573113ee2b580c751a8270.svg" alt="" />
+        </button>
+      </div>
+      <div class="rename-item-modal-body">
+        <div class="rename-item-field">
+          <label for="rename-item-name" id="rename-item-label" class="rename-item-label">Name</label>
+          <input
+            type="text"
+            id="rename-item-name"
+            class="rename-item-input"
+            placeholder="Enter new name"
+          />
+        </div>
+        <p class="rename-item-hint" id="rename-item-hint"></p>
+      </div>
+      <div class="rename-item-modal-footer">
+        <button id="rename-item-cancel" class="rename-item-btn rename-item-btn-secondary">
+          Cancel
+        </button>
+        <button id="rename-item-submit" class="rename-item-btn rename-item-btn-primary">
+          Rename
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="duplicate-item-modal" class="modal" style="display: none;">
+    <div class="duplicate-item-modal-content">
+      <div class="duplicate-item-modal-header">
+        <h3 id="duplicate-item-title">Duplicate</h3>
+        <button type="button" id="duplicate-item-close" class="duplicate-item-close-btn" aria-label="Close">
+          <img src="/view/assets/ab1d94399957e76f55573113ee2b580c751a8270.svg" alt="" />
+        </button>
+      </div>
+      <div class="duplicate-item-modal-body">
+        <div class="duplicate-item-field">
+          <label for="duplicate-item-name" id="duplicate-item-label" class="duplicate-item-label">Name</label>
+          <input
+            type="text"
+            id="duplicate-item-name"
+            class="duplicate-item-input"
+            placeholder="Enter new name"
+          />
+        </div>
+        <p class="duplicate-item-hint" id="duplicate-item-hint"></p>
+      </div>
+      <div class="duplicate-item-modal-footer">
+        <button id="duplicate-item-cancel" class="duplicate-item-btn duplicate-item-btn-secondary">
+          Cancel
+        </button>
+        <button id="duplicate-item-submit" class="duplicate-item-btn duplicate-item-btn-primary">
+          Duplicate
+        </button>
+      </div>
     </div>
   </div>
 

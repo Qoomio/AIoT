@@ -267,6 +267,15 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
     showContextMenu(event, menuItems, 'tab-context-menu');
 }
 
+// Check if path is under projects directory
+function isUnderProjects(path) {
+    // Normalize path - remove leading slash if present
+    const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
+    // Check if path starts with 'projects/'
+    return normalizedPath.startsWith('projects/');
+}
+
+
 function showExplorerContextMenu(event, path, isDirectory, selection) {
     const selectionCount = selection ? selection.length : 0;
     const itemType = isDirectory ? 'Folder' : 'File';
@@ -422,6 +431,18 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         );
     }
     
+    menuItems.push(
+        { type: 'separator' },
+        {
+            icon: '🚀',
+            text: 'Publish',
+            handler: () => {
+                removeContextMenu();
+                qoomEvent.emit('publisher:open', { path, isDirectory });
+            }
+        }
+    );
+    
     showContextMenu(event, menuItems, 'explorer-context-menu');
 }
 
@@ -448,6 +469,7 @@ async function injectCSS() {
         document.head.appendChild(link);
     });
 }
+
 
 async function injectHTML() {
     try {
@@ -477,6 +499,7 @@ async function initialize(_state) {
         const { event, path, isDirectory, selection } = e.detail;
         showExplorerContextMenu(event, path, isDirectory, selection);
     });
+    
 }
 
 export {

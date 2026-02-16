@@ -11,7 +11,136 @@ import path from 'path';
 import chokidar from 'chokidar';
 
 
-// File path validation and sanitization removed - not needed for broadcast approach
+/**
+ * Parse .gitignore file and convert patterns to chokidar-compatible ignore patterns
+ * @param {string} projectRoot - The project root directory
+ * @returns {Array} Array of ignore patterns (strings and functions)
+ */
+function parseGitignore(projectRoot) {
+  const gitignorePath = path.join(projectRoot, '.gitignore');
+  const ignorePatterns = [];
+  
+  // Always ignore .git directory
+  ignorePatterns.push((filePath) => filePath.includes('/.git/') || filePath.endsWith('/.git'));
+  
+  // Always ignore Python virtual environments and site-packages (thousands of files)
+  ignorePatterns.push((filePath) => {
+    const lower = filePath.toLowerCase();
+    return (
+      lower.includes('/site-packages/') ||
+      lower.includes('/__pycache__/') ||
+      lower.includes('/.venv/') ||
+      lower.includes('/venv/') ||
+      lower.includes('/.env/') ||
+      lower.includes('/lib/python') ||
+      lower.includes('/lib64/python') ||
+      lower.endsWith('.pyc')
+    );
+  });
+  
+  // Ignore monaco-editor (bundled library with thousands of files)
+  ignorePatterns.push((filePath) => filePath.includes('/monaco-editor/'));
+  
+  // Ignore versioner backups (can have many files)
+  ignorePatterns.push((filePath) => filePath.includes('/.versions/'));
+  
+  try {
+    if (!fs.existsSync(gitignorePath)) {
+      console.log('[WATCHER] No .gitignore file found, using default ignores');
+      return ignorePatterns;
+    }
+    
+    const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+    const lines = gitignoreContent.split('\n');
+    
+    for (const line of lines) {
+      // Trim whitespace
+      const trimmed = line.trim();
+      
+      // Skip empty lines and comments
+      if (!trimmed || trimmed.startsWith('#') || trimmed === 'projects/') {
+        continue;
+      }
+      
+      // Convert gitignore pattern to a matcher function
+      const matcher = createIgnoreMatcher(trimmed, projectRoot);
+      if (matcher) {
+        ignorePatterns.push(matcher);
+      }
+    }
+    
+    console.log('[WATCHER] Loaded', ignorePatterns.length, 'ignore patterns from .gitignore');
+  } catch (error) {
+    console.error('[WATCHER] Error reading .gitignore:', error);
+  }
+  
+  return ignorePatterns;
+}
+
+/**
+ * Create a matcher function for a gitignore pattern
+ * @param {string} pattern - The gitignore pattern
+ * @param {string} projectRoot - The project root directory
+ * @returns {Function|null} A function that returns true if a path should be ignored
+ */
+function createIgnoreMatcher(pattern, projectRoot) {
+  // Handle negation patterns (we'll skip them for simplicity)
+  if (pattern.startsWith('!')) {
+    return null;
+  }
+  
+  // Remove leading slash (indicates root-relative pattern)
+  const isRootRelative = pattern.startsWith('/');
+  let cleanPattern = isRootRelative ? pattern.slice(1) : pattern;
+  
+  // Remove trailing slash (indicates directory)
+  const isDirectory = cleanPattern.endsWith('/');
+  if (isDirectory) {
+    cleanPattern = cleanPattern.slice(0, -1);
+  }
+  
+  // Convert gitignore glob pattern to regex
+  const regexPattern = gitignorePatternToRegex(cleanPattern, isRootRelative, projectRoot);
+  
+  return (filePath) => {
+    // Normalize path separators
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    return regexPattern.test(normalizedPath);
+  };
+}
+
+/**
+ * Convert a gitignore pattern to a regular expression
+ * @param {string} pattern - The gitignore pattern (without leading/trailing slashes)
+ * @param {boolean} isRootRelative - Whether the pattern is anchored to root
+ * @param {string} projectRoot - The project root directory
+ * @returns {RegExp} The compiled regular expression
+ */
+function gitignorePatternToRegex(pattern, isRootRelative, projectRoot) {
+  // Escape regex special characters except * and ?
+  let regexStr = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '{{GLOBSTAR}}')  // Placeholder for **
+    .replace(/\*/g, '[^/]*')            // * matches anything except /
+    .replace(/\?/g, '[^/]')             // ? matches single char except /
+    .replace(/{{GLOBSTAR}}/g, '.*');    // ** matches everything including /
+  
+  // Normalize project root for regex
+  const normalizedRoot = projectRoot.replace(/\\/g, '/').replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  
+  if (isRootRelative) {
+    // Pattern is anchored to project root
+    regexStr = `^${normalizedRoot}/${regexStr}`;
+  } else {
+    // Pattern can match anywhere in the path
+    regexStr = `(^|/)${regexStr}`;
+  }
+  
+  // Match the pattern anywhere in the path (for directories) or at the end (for files)
+  regexStr = `${regexStr}($|/)`;
+  
+  return new RegExp(regexStr);
+}
 
 
 
@@ -91,30 +220,14 @@ class FileWatcher {
     try {
       console.log('[WATCHER] Starting project root watcher for file watching and rename detection:', this.projectRoot);
       
-      // Detect production environment
-      const isProduction = process.env.NODE_ENV === 'production' || 
-                          process.env.DOCKER === 'true' || 
-                          !process.env.DEV;
-
+      // Parse .gitignore and create ignore patterns dynamically
+      const ignorePatterns = parseGitignore(this.projectRoot);
+      
       this.projectRootWatcher = chokidar.watch(this.projectRoot, {
         persistent: true,
         ignoreInitial: true,
-        usePolling: isProduction,  // Enable polling in production
-        interval: isProduction ? 2000 : 1000,  // Longer interval in production
-        depth: 10, // Watch subdirectories up to 10 levels deep
         ignorePermissionErrors: true,
-        ignored: [
-          '**/node_modules/**',
-          '**/\.git/**',
-          '**/\.next/**',
-          '**/dist/**',
-          '**/build/**',
-          '**/logs/**',
-          '**/*.log',
-          '**/tmp/**',
-          '**/temp/**',
-          '**/monaco-editor/**'
-        ]
+        ignored: ignorePatterns
       });
       
       // Track file deletions for rename detection AND notify clients
@@ -194,6 +307,16 @@ class FileWatcher {
       this.projectRootWatcher.on('ready', () => {
         console.log('[WATCHER] Project root watcher ready and monitoring:', this.projectRoot);
         this.isProjectWatcherActive = true;
+        
+        // Log the number of watched files
+        const watched = this.projectRootWatcher.getWatched();
+        let fileCount = 0;
+        let dirCount = 0;
+        for (const dir of Object.keys(watched)) {
+          dirCount++;
+          fileCount += watched[dir].length;
+        }
+        console.log(`[WATCHER] Watching ${fileCount} files in ${dirCount} directories`);
       });
       
       console.log('[WATCHER] Project root watcher initialized at startup');
@@ -362,6 +485,10 @@ class FileWatcher {
     }
   }
   
+  /**
+   * Validate watched files against .gitignore patterns
+   * @param {Object} watched - Object from getWatched() containing directories and files
+   */
   /**
    * Clean up old unlink records
    */

@@ -4,6 +4,8 @@
  * Styles for the file explorer component in the Monaco editor interface.
  */
 
+@import url("/view/shared/theme.css");
+
  .file-explorer {
     width: 250px;
     background-color: #252526;
@@ -815,147 +817,551 @@
 
 
 #create-file-modal,
-#create-folder-modal {
+#create-folder-modal,
+#rename-item-modal,
+#duplicate-item-modal {
 position: fixed;
 z-index: 10000;
 left: 0;
 top: 0;
 width: 100%;
 height: 100%;
-background-color: rgba(0, 0, 0, 0.6);
+background-color: rgba(0, 0, 0, 0.55);
 display: none;
-}
-#create-file-modal .modal-content,
-#create-folder-modal .modal-content {
-background-color: #2d2d30;
-margin: 10% auto;
-border: 1px solid #3e3e42;
-border-radius: 4px;
-width: 90%;
-max-width: 450px;
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-#create-file-modal .modal-header,
-#create-folder-modal .modal-header {
-padding: 12px 16px;
-border-bottom: 1px solid #3e3e42;
-display: flex;
-justify-content: space-between;
 align-items: center;
-}
-#create-file-modal .modal-header h3,
-#create-folder-modal .modal-header h3 {
-margin: 0;
-font-size: 14px;
-color: #cccccc;
-font-weight: 600;
-}
-#create-file-close,
-#create-folder-close {
-color: #cccccc;
-font-size: 18px;
-font-weight: bold;
-cursor: pointer;
-line-height: 1;
-padding: 4px 8px;
-border-radius: 2px;
-}
-#create-file-close:hover,
-#create-folder-close:hover {
-color: #ffffff;
-background-color: #3e3e42;
-}
-#create-file-modal .modal-body,
-#create-folder-modal .modal-body {
-padding: 16px;
-flex-direction: column;
-}
-#create-file-modal .modal-footer,
-#create-folder-modal .modal-footer {
-padding: 12px 16px;
-border-top: 1px solid #3e3e42;
-display: flex;
-justify-content: flex-end;
-gap: 8px;
-}
-#create-file-modal .form-group,
-#create-folder-modal .form-group {
-margin-bottom: 12px;
-}
-#create-file-modal .form-group label,
-#create-folder-modal .form-group label {
-display: block;
-margin-bottom: 4px;
-font-size: 12px;
-color: #cccccc;
-font-weight: 500;
-}
-#file-name,
-#folder-name,
-#file-template,
-#file-content {
-width: 100%;
-padding: 6px 8px;
-border: 1px solid #3e3e42;
-border-radius: 3px;
-background-color: #1e1e1e;
-color: #d4d4d4;
-font-size: 12px;
-font-family: inherit;
+justify-content: center;
+padding: 24px;
 box-sizing: border-box;
 }
-#file-name:focus,
-#folder-name:focus,
-#file-template:focus,
-#file-content:focus {
-outline: none;
-border-color: #007acc;
+
+#create-file-modal {
+    backdrop-filter: none;
 }
-#file-content {
-resize: vertical;
-min-height: 80px;
-font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+
+#create-file-modal .create-file-modal-content {
+background-color: #1e1e1e;
+border-radius: 12px;
+width: 92%;
+max-width: 640px;
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+overflow: hidden;
 }
-#file-content:disabled {
-background-color: #2d2d30;
-color: #888;
-cursor: not-allowed;
+
+#create-folder-modal .create-folder-modal-content {
+background-color: #1e1e1e;
+border-radius: 12px;
+width: 92%;
+max-width: 520px;
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+overflow: hidden;
 }
-#create-file-cancel,
-#create-file-submit,
-#create-folder-cancel,
-#create-folder-submit {
-padding: 6px 12px;
-border: none;
-border-radius: 3px;
-font-size: 12px;
-cursor: pointer;
-font-weight: 500;
-min-width: 70px;
+
+#rename-item-modal .rename-item-modal-content {
+background-color: #1e1e1e;
+border-radius: 12px;
+width: 92%;
+max-width: 520px;
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+overflow: hidden;
 }
-#create-file-submit,
-#create-folder-submit {
-background-color: #007acc;
+
+#duplicate-item-modal .duplicate-item-modal-content {
+background-color: #1e1e1e;
+border-radius: 12px;
+width: 92%;
+max-width: 520px;
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    #create-file-modal .create-file-modal-content {
+        width: 94%;
+        margin: 4% auto;
+    }
+}
+
+#create-file-modal .create-file-modal-header {
+padding: 24px 24px 20px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+#create-folder-modal .create-folder-modal-header {
+padding: 24px 24px 20px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+#rename-item-modal .rename-item-modal-header {
+padding: 24px 24px 20px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+#duplicate-item-modal .duplicate-item-modal-header {
+padding: 24px 24px 20px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+#create-file-modal .create-file-modal-header h3 {
+margin: 0;
+font-size: 20px;
 color: #ffffff;
+font-weight: 600;
+line-height: 24px;
 }
-#create-file-submit:hover,
-#create-folder-submit:hover {
-background-color: #005a9e;
+
+#create-folder-modal .create-folder-modal-header h3 {
+margin: 0;
+font-size: 20px;
+color: #ffffff;
+font-weight: 600;
+line-height: 24px;
 }
-#create-file-submit:disabled,
-#create-folder-submit:disabled {
-background-color: #094771;
-color: #888;
-cursor: not-allowed;
+
+#rename-item-modal .rename-item-modal-header h3 {
+margin: 0;
+font-size: 20px;
+color: #ffffff;
+font-weight: 600;
+line-height: 24px;
 }
-#create-file-cancel,
-#create-folder-cancel {
-background-color: #3e3e42;
-color: #cccccc;
+
+#duplicate-item-modal .duplicate-item-modal-header h3 {
+margin: 0;
+font-size: 20px;
+color: #ffffff;
+font-weight: 600;
+line-height: 24px;
 }
-#create-file-cancel:hover,
-#create-folder-cancel:hover {
-background-color: #4e4e52;
+
+.create-file-close-btn {
+background: transparent;
+border: none;
+width: 32px;
+height: 32px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 6px;
+cursor: pointer;
+padding: 0;
 }
+
+.create-folder-close-btn {
+background: transparent;
+border: none;
+width: 32px;
+height: 32px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 6px;
+cursor: pointer;
+padding: 0;
+}
+
+.rename-item-close-btn {
+background: transparent;
+border: none;
+width: 32px;
+height: 32px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 6px;
+cursor: pointer;
+padding: 0;
+}
+
+.duplicate-item-close-btn {
+background: transparent;
+border: none;
+width: 32px;
+height: 32px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 6px;
+cursor: pointer;
+padding: 0;
+}
+
+.create-file-close-btn img {
+width: 20px;
+height: 20px;
+display: block;
+}
+
+.create-folder-close-btn img {
+width: 20px;
+height: 20px;
+display: block;
+}
+
+.rename-item-close-btn img {
+width: 20px;
+height: 20px;
+display: block;
+}
+
+.duplicate-item-close-btn img {
+width: 20px;
+height: 20px;
+display: block;
+}
+
+#create-file-modal .create-file-modal-body {
+padding: 0 24px 24px;
+display: flex;
+flex-direction: column;
+gap: 24px;
+}
+
+#create-folder-modal .create-folder-modal-body {
+padding: 0 24px 24px;
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+
+#rename-item-modal .rename-item-modal-body {
+padding: 0 24px 16px;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+#duplicate-item-modal .duplicate-item-modal-body {
+padding: 0 24px 16px;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+.create-file-field {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.create-folder-field {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.rename-item-field {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.duplicate-item-field {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.create-file-label {
+color: #e5e7eb;
+font-size: 14px;
+font-weight: 500;
+line-height: 16.8px;
+}
+
+.create-folder-label {
+color: #e5e7eb;
+font-size: 14px;
+font-weight: 500;
+line-height: 16.8px;
+}
+
+.rename-item-label {
+color: #e5e7eb;
+font-size: 14px;
+font-weight: 500;
+line-height: 16.8px;
+}
+
+.duplicate-item-label {
+color: #e5e7eb;
+font-size: 14px;
+font-weight: 500;
+line-height: 16.8px;
+}
+
+.create-file-input {
+width: 100%;
+height: 44px;
+padding: 12px 16px;
+border-radius: 8px;
+border: 2px solid var(--brand-primary);
+background-color: #2a2a2a;
+color: #e5e7eb;
+font-size: 14px;
+box-sizing: border-box;
+}
+
+.create-folder-input {
+width: 100%;
+height: 44px;
+padding: 12px 16px;
+border-radius: 8px;
+border: 1px solid #404040;
+background-color: #2a2a2a;
+color: #e5e7eb;
+font-size: 14px;
+box-sizing: border-box;
+}
+
+.rename-item-input {
+width: 100%;
+height: 44px;
+padding: 12px 16px;
+border-radius: 8px;
+border: 1px solid #404040;
+background-color: #2a2a2a;
+color: #e5e7eb;
+font-size: 14px;
+box-sizing: border-box;
+}
+
+.duplicate-item-input {
+width: 100%;
+height: 44px;
+padding: 12px 16px;
+border-radius: 8px;
+border: 1px solid #404040;
+background-color: #2a2a2a;
+color: #e5e7eb;
+font-size: 14px;
+box-sizing: border-box;
+}
+
+.create-file-input::placeholder {
+color: #6b7280;
+}
+
+.create-folder-input::placeholder {
+color: #6b7280;
+}
+
+.rename-item-input::placeholder {
+color: #6b7280;
+}
+
+.duplicate-item-input::placeholder {
+color: #6b7280;
+}
+
+.rename-item-hint {
+margin: 0;
+color: #9ca3af;
+font-size: 12px;
+line-height: 14px;
+}
+
+.duplicate-item-hint {
+margin: 0;
+color: #9ca3af;
+font-size: 12px;
+line-height: 14px;
+}
+
+.create-file-select-wrap {
+position: relative;
+}
+
+.create-file-select {
+width: 100%;
+height: 44px;
+padding: 0 44px 0 16px;
+border-radius: 8px;
+border: 1px solid #404040;
+background-color: #2a2a2a;
+color: #d1d5db;
+font-size: 14px;
+appearance: none;
+}
+
+.create-file-select-icon {
+position: absolute;
+right: 16px;
+top: 50%;
+transform: translateY(-50%);
+width: 20px;
+height: 20px;
+pointer-events: none;
+}
+
+.create-file-textarea {
+width: 100%;
+min-height: 160px;
+padding: 12px 16px;
+border-radius: 8px;
+border: 1px solid #404040;
+background-color: #2a2a2a;
+color: #e5e7eb;
+font-size: 14px;
+line-height: 16.8px;
+resize: vertical;
+box-sizing: border-box;
+}
+
+.create-file-textarea::placeholder {
+color: #6b7280;
+}
+
+#create-file-modal .create-file-modal-footer {
+padding: 20px 24px 24px;
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+}
+
+#create-folder-modal .create-folder-modal-footer {
+padding: 20px 24px 24px;
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+}
+
+#rename-item-modal .rename-item-modal-footer {
+padding: 20px 24px 24px;
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+}
+
+#duplicate-item-modal .duplicate-item-modal-footer {
+padding: 20px 24px 24px;
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+}
+
+.create-file-btn {
+height: 44px;
+padding: 0 24px;
+border: none;
+border-radius: 8px;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+}
+
+.create-folder-btn {
+height: 44px;
+padding: 0 24px;
+border: none;
+border-radius: 8px;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+}
+
+.rename-item-btn {
+height: 44px;
+padding: 0 24px;
+border: none;
+border-radius: 8px;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+}
+
+.duplicate-item-btn {
+height: 44px;
+padding: 0 24px;
+border: none;
+border-radius: 8px;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+}
+
+.create-file-btn-secondary {
+background-color: #2a2a2a;
+color: #d1d5db;
+}
+
+.create-folder-btn-secondary {
+background-color: #2a2a2a;
+color: #d1d5db;
+}
+
+.rename-item-btn-secondary {
+background-color: #2a2a2a;
+color: #d1d5db;
+}
+
+.duplicate-item-btn-secondary {
+background-color: #2a2a2a;
+color: #d1d5db;
+}
+
+.create-file-btn-secondary:hover {
+background-color: #333333;
+}
+
+.create-folder-btn-secondary:hover {
+background-color: #333333;
+}
+
+.rename-item-btn-secondary:hover {
+background-color: #333333;
+}
+
+.duplicate-item-btn-secondary:hover {
+background-color: #333333;
+}
+
+.create-file-btn-primary {
+background-color: var(--brand-primary);
+color: #ffffff;
+font-weight: 600;
+}
+
+.create-folder-btn-primary {
+background-color: var(--brand-primary);
+color: #ffffff;
+font-weight: 600;
+}
+
+.rename-item-btn-primary {
+background-color: var(--brand-primary);
+color: #ffffff;
+font-weight: 600;
+}
+
+.duplicate-item-btn-primary {
+background-color: var(--brand-primary);
+color: #ffffff;
+font-weight: 600;
+}
+
+.create-file-btn-primary:hover {
+background-color: var(--brand-primary-hover);
+}
+
+.create-folder-btn-primary:hover {
+background-color: var(--brand-primary-hover);
+}
+
+.rename-item-btn-primary:hover {
+background-color: var(--brand-primary-hover);
+}
+
+.duplicate-item-btn-primary:hover {
+background-color: var(--brand-primary-hover);
+}
+
 
 

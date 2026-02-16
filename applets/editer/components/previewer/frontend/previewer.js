@@ -330,6 +330,7 @@ function setupPreviewerEvents() {
 
 	qoomEvent.on('addNewTab', updatePreview);
     qoomEvent.on('activeTabChangedInPane', updatePreview);
+	qoomEvent.on('fileRenamed', updatePreview);
 }
 
 async function updatePreview() {

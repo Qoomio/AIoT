@@ -48,7 +48,7 @@ function getDirectoryContents(dirPath = '.') {
       }
       
       const items = [];
-      const isEducationMode = process.env.NODE_ENV === 'education';
+      const isEducationMode = process.env.NODE_ENV !== 'development';
       
       entries.forEach(entry => {
         const fullPath = path.join(sanitizedPath, entry.name);

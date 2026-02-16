@@ -715,6 +715,21 @@ class EditorTab {
       }
     });
   }
+  updateFilePath(newPath) {
+    if (!newPath || newPath === __privateGet(this, _filePath)) return;
+    const existingContent = __privateGet(this, _model) ? __privateGet(this, _model).getValue() : null;
+    if (__privateGet(this, _model)) {
+      __privateGet(this, _model).dispose();
+      __privateSet(this, _model, null);
+    }
+    __privateSet(this, _filePath, newPath);
+    if (existingContent !== null) {
+      const uri = window.monaco.Uri.file(__privateGet(this, _filePath));
+      const existingModel = window.monaco.editor.getModel(uri);
+      __privateSet(this, _model, existingModel || window.monaco.editor.createModel(existingContent, void 0, uri));
+      qoomEvent$1.emit("tabContentLoaded", this);
+    }
+  }
   equals(tab) {
     return this.paneId === tab.paneId && this.id === tab.id;
   }
@@ -77016,14 +77031,14 @@ function registerIcon(id, defaults2, description, deprecationMessage) {
 function getIconRegistry() {
   return iconRegistry;
 }
-function initialize$d() {
+function initialize$e() {
   const codiconFontCharacters = getCodiconFontCharacters();
   for (const icon in codiconFontCharacters) {
     const fontCharacter = "\\" + codiconFontCharacters[icon].toString(16);
     iconRegistry.registerIcon(icon, { fontCharacter });
   }
 }
-initialize$d();
+initialize$e();
 const iconsSchemaId = "vscode://schemas/icons";
 const schemaRegistry = Registry.as(Extensions$7.JSONContribution);
 schemaRegistry.registerSchema(iconsSchemaId, iconRegistry.getIconSchema());
@@ -170515,7 +170530,7 @@ function initializeChat() {
   });
   agentSelect.value = selectedAgent;
 }
-function injectCSS$a() {
+function injectCSS$b() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="chat.css"]')) {
       return Promise.resolve();
@@ -170591,9 +170606,9 @@ function openProjectFile(filePath) {
     window.location.href = "/edit/" + filePath;
   }
 }
-function initialize$c(_state) {
+function initialize$d(_state) {
   return __async(this, null, function* () {
-    yield injectCSS$a();
+    yield injectCSS$b();
     yield injectHTML$a();
     initializeChat();
     setupChatEvents();
@@ -170602,7 +170617,7 @@ function initialize$c(_state) {
   });
 }
 let state$6 = null;
-function showMessage$2(message, type = "info") {
+function showMessage$3(message, type = "info") {
   const messageDiv = document.createElement("div");
   messageDiv.className = `upload-message upload-message-${type}`;
   messageDiv.textContent = message;
@@ -170647,11 +170662,11 @@ function copyRelativePath(path) {
   return __async(this, null, function* () {
     try {
       yield navigator.clipboard.writeText(path);
-      showMessage$2(`Relative path copied: ${path}`, "success");
+      showMessage$3(`Relative path copied: ${path}`, "success");
     } catch (error) {
       console.error("Failed to copy relative path:", error);
       fallbackCopyToClipboard(path);
-      showMessage$2(`Relative path copied: ${path}`, "success");
+      showMessage$3(`Relative path copied: ${path}`, "success");
     }
   });
 }
@@ -170661,17 +170676,17 @@ function copyAbsolutePath(relativePath2) {
       const workspaceRoot = yield getWorkspaceRoot();
       const absolutePath = workspaceRoot + "/" + relativePath2;
       yield navigator.clipboard.writeText(absolutePath);
-      showMessage$2(`Absolute path copied: ${absolutePath}`, "success");
+      showMessage$3(`Absolute path copied: ${absolutePath}`, "success");
     } catch (error) {
       console.error("Failed to copy absolute path:", error);
       try {
         const workspaceRoot = yield getWorkspaceRoot();
         const absolutePath = workspaceRoot + "/" + relativePath2;
         fallbackCopyToClipboard(absolutePath);
-        showMessage$2(`Absolute path copied: ${absolutePath}`, "success");
+        showMessage$3(`Absolute path copied: ${absolutePath}`, "success");
       } catch (fallbackError) {
         console.error("Fallback copy also failed:", fallbackError);
-        showMessage$2("Failed to copy absolute path", "error");
+        showMessage$3("Failed to copy absolute path", "error");
       }
     }
   });
@@ -170977,9 +170992,20 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       }
     );
   }
+  menuItems.push(
+    { type: "separator" },
+    {
+      icon: "🚀",
+      text: "Publish",
+      handler: () => {
+        removeContextMenu();
+        qoomEvent$1.emit("publisher:open", { path, isDirectory });
+      }
+    }
+  );
   showContextMenu(event, menuItems, "explorer-context-menu");
 }
-function injectCSS$9() {
+function injectCSS$a() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="context.css"]')) {
       return Promise.resolve();
@@ -171014,10 +171040,10 @@ function injectHTML$9() {
     }
   });
 }
-function initialize$b(_state) {
+function initialize$c(_state) {
   return __async(this, null, function* () {
     state$6 = _state;
-    yield injectCSS$9();
+    yield injectCSS$a();
     yield injectHTML$9();
     qoomEvent$1.on("showTabContextMenu", (e) => {
       const { event, paneId, tabId, filePath } = e.detail;
@@ -171159,7 +171185,7 @@ function setupControllerEvents() {
       }
       const res = yield fetch("/updater/deploy", { method: "POST" });
       if (!res.ok) throw new Error("Failed to start deploy");
-      const restarted = yield waitForServiceRestart(currentBootId, 12e4);
+      const restarted = yield waitForServiceRestart(currentBootId, 15 * 1e3 * 60);
       if (!restarted) {
         location.reload();
         return;
@@ -171229,7 +171255,7 @@ function initializeController() {
   settingsButton = document.querySelector("#monaco-settings-button");
   updateButton = document.querySelector("#update-button");
   const nodeEnv = ((_a3 = window.__QOOM_CONFIG) == null ? void 0 : _a3.NODE_ENV) || "development";
-  if (nodeEnv !== "education") {
+  if (nodeEnv === "development") {
     updateButton.style.display = "none";
   }
   const hideAiPane = ((_b3 = window.__QOOM_CONFIG) == null ? void 0 : _b3.HIDE_AI_PANE) === true;
@@ -171251,7 +171277,7 @@ function initializeController() {
   }
   selectWhatLayoutButtonsToShow();
 }
-function injectCSS$8() {
+function injectCSS$9() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="controller.css"]')) {
       return Promise.resolve();
@@ -171284,10 +171310,10 @@ function injectHTML$8() {
     }
   });
 }
-function initialize$a(_state) {
+function initialize$b(_state) {
   return __async(this, null, function* () {
     state$5 = _state;
-    yield injectCSS$8();
+    yield injectCSS$9();
     yield injectHTML$8();
     initializeController();
     setupControllerEvents();
@@ -171351,7 +171377,7 @@ function addEventListeners$1() {
   qoomEvent$1.on("closedTabs", closedTabs);
   qoomEvent$1.on("activeTabChangedInPane", (e) => updateTab(e.detail.activeTab));
 }
-function injectCSS$7() {
+function injectCSS$8() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="tab.css"]')) {
       return Promise.resolve();
@@ -171387,10 +171413,10 @@ function injectHTML$7() {
     }
   });
 }
-function initialize$9(_state) {
+function initialize$a(_state) {
   return __async(this, null, function* () {
     state$4 = _state;
-    yield injectCSS$7();
+    yield injectCSS$8();
     yield injectHTML$7();
     addEventListeners$1();
     console.log("Editor Tabs initialized");
@@ -171447,7 +171473,7 @@ function replaceInFiles(replacements, replaceText) {
     }
   });
 }
-function showMessage$1(message, type = "info") {
+function showMessage$2(message, type = "info") {
   const messageDiv = document.createElement("div");
   messageDiv.className = `search-message search-message-${type}`;
   messageDiv.textContent = message;
@@ -171621,9 +171647,9 @@ function replaceMatch(event, filePath, line, column) {
     const result = yield replaceInFiles(replacements, replaceText);
     if (result.success) {
       yield performSearch();
-      showMessage$1("Match replaced successfully", "success");
+      showMessage$2("Match replaced successfully", "success");
     } else {
-      showMessage$1("Failed to replace match: " + result.error, "error");
+      showMessage$2("Failed to replace match: " + result.error, "error");
     }
   });
 }
@@ -171649,9 +171675,9 @@ function replaceSelected() {
     if (result.success) {
       selectedMatches.clear();
       yield performSearch();
-      showMessage$1(`${replacements.length} matches replaced successfully`, "success");
+      showMessage$2(`${replacements.length} matches replaced successfully`, "success");
     } else {
-      showMessage$1("Failed to replace matches: " + result.error, "error");
+      showMessage$2("Failed to replace matches: " + result.error, "error");
     }
   });
 }
@@ -171674,9 +171700,9 @@ function replaceAll() {
     if (result.success) {
       selectedMatches.clear();
       yield performSearch();
-      showMessage$1(`${replacements.length} matches replaced successfully`, "success");
+      showMessage$2(`${replacements.length} matches replaced successfully`, "success");
     } else {
-      showMessage$1("Failed to replace all matches: " + result.error, "error");
+      showMessage$2("Failed to replace all matches: " + result.error, "error");
     }
   });
 }
@@ -171758,7 +171784,7 @@ function setupSearchInterface() {
     });
   }
 }
-function initialize$8(_container) {
+function initialize$9(_container) {
   return __async(this, null, function* () {
     container = _container;
     if (!document.querySelector('link[href*="search.css"]')) {
@@ -171852,7 +171878,7 @@ function initializeSearchTab($container) {
       const html2 = yield response.text();
       $container.innerHTML = html2;
       $container.setAttribute("data-initialized", "true");
-      yield initialize$8($container);
+      yield initialize$9($container);
     } catch (error) {
       console.error("Failed to load search tab:", error);
       $container.innerHTML = '<div style="padding: 20px; color: #d4d4d4;">Failed to load search tab</div>';
@@ -172023,7 +172049,7 @@ function updateControls() {
   dom$1.buttons.splitHorizontal[3].style.display = "none";
   dom$1.buttons.splitVertical[3].style.display = "none";
 }
-function injectCSS$6() {
+function injectCSS$7() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="pane.css"]')) {
       return Promise.resolve();
@@ -172069,14 +172095,14 @@ function injectHTML$6() {
     }
   });
 }
-function initialize$7(_state) {
+function initialize$8(_state) {
   return __async(this, null, function* () {
     state$3 = _state;
-    yield injectCSS$6();
+    yield injectCSS$7();
     yield injectHTML$6();
     yield loadMonacoEditor();
     yield updateControls();
-    yield initialize$9(state$3);
+    yield initialize$a(state$3);
     addEventListeners();
     console.log("Editor Panes initialized");
   });
@@ -172099,6 +172125,7 @@ let editorLayout = null;
 let remoteUserCursor = null;
 let cursorChangeListeners = [];
 let remoteDecorations = [];
+let serverBootId = null;
 const maxReconnectAttempts = 5;
 function diagnoseSyncFailure() {
   return __async(this, null, function* () {
@@ -172263,7 +172290,10 @@ function normalizePath(filePath) {
 }
 function initializeFileSync() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}/watcher/_sync`;
+  let wsUrl = `${protocol}//${window.location.host}/watcher/_sync`;
+  if (serverBootId) {
+    wsUrl += `?bootId=${encodeURIComponent(serverBootId)}`;
+  }
   console.log("[SYNC] Connecting to file sync WebSocket:", wsUrl);
   try {
     editorSyncWS = new WebSocket(wsUrl);
@@ -172315,13 +172345,23 @@ function handleSyncMessage(message) {
     filePath,
     content,
     clientId,
-    files
+    files,
+    bootId
   } = message;
   console.log("[SYNC] Received message:", type);
   switch (type) {
     case "connection_established":
       console.log("[SYNC] Client ID assigned:", clientId);
+      if (bootId) {
+        serverBootId = bootId;
+        window.__QOOM_BOOT_ID = bootId;
+        console.log("[SYNC] Server boot ID:", bootId);
+      }
       updateWatchedFiles();
+      break;
+    case "service_restarted":
+      console.log("[SYNC] Service restart detected, reloading page...");
+      window.location.reload();
       break;
     case "file_changed":
       state$2.layout.panes.forEach((pane, paneIndex) => {
@@ -172359,6 +172399,7 @@ function handleSyncMessage(message) {
       break;
     case "file_renamed":
       console.log("[SYNC] File renamed:", message.oldPath, "->", message.newPath);
+      handleFileRename(message.oldPath, message.newPath);
       state$2.fileRenamed();
       break;
     case "watch_files_confirmed":
@@ -172572,6 +172613,55 @@ function updateRemoteCursorDecorations() {
     console.log(`[CURSOR] Pane ${paneIndex}: decoration IDs:`, newDecorationIds);
   });
 }
+function handleFileRename(oldPath, newPath) {
+  console.log("[SYNC] Handling file rename:", oldPath, "->", newPath);
+  const normalizedOldPath = normalizePath(oldPath);
+  const normalizedNewPath = normalizePath(newPath);
+  let tabsUpdated = 0;
+  let activeTabRenamed = false;
+  editorLayout.panes.forEach((pane) => {
+    pane.tabs.forEach((tab) => {
+      var _a3;
+      const normalizedTabPath = normalizePath(tab.filePath);
+      let newTabPath = null;
+      if (normalizedTabPath === normalizedOldPath) {
+        newTabPath = normalizedNewPath;
+      } else if (normalizedTabPath.startsWith(normalizedOldPath + "/")) {
+        newTabPath = normalizedNewPath + normalizedTabPath.substring(normalizedOldPath.length);
+      }
+      if (newTabPath) {
+        tab.updateFilePath(newTabPath);
+        if (((_a3 = pane.activeTab) == null ? void 0 : _a3.id) === tab.id) {
+          activeTabRenamed = true;
+        }
+        if (tab.updateDisplay) {
+          tab.updateDisplay();
+        }
+        const tabElement = document.querySelector(`.tab[data-tab="${tab.id}"]`);
+        if (tabElement) {
+          tabElement.setAttribute("data-file-path", newTabPath);
+          const titleElement = tabElement.querySelector(".tab-name");
+          if (titleElement) {
+            titleElement.textContent = tab.fileName;
+            titleElement.setAttribute("title", tab.fileName);
+          }
+        }
+        tabsUpdated++;
+        console.log("[SYNC] Updated tab:", tab.id, "to new path:", newTabPath);
+      }
+    });
+  });
+  if (tabsUpdated > 0) {
+    console.log(`[SYNC] Updated ${tabsUpdated} tab(s) for renamed file/folder`);
+    updateWatchedFiles();
+    const oldFileName = normalizedOldPath.split("/").pop();
+    const newFileName = normalizedNewPath.split("/").pop();
+    showSaveNotification(`File renamed: ${oldFileName} → ${newFileName}`, "info");
+    if (activeTabRenamed) {
+      qoomEvent$1.emit("activeFilePathChanged", { oldPath: normalizedOldPath, newPath: normalizedNewPath });
+    }
+  }
+}
 let updateWatchedFilesTimeout = null;
 let pendingWatchUpdate = false;
 function updateWatchedFiles() {
@@ -172660,8 +172750,13 @@ function setupEditorsEventListeners() {
   qoomEvent$1.on("editorCreated", () => {
     setupRemoteCursorTracking();
   });
+  qoomEvent$1.on("fileRenamed", (e) => {
+    const { oldPath, newPath } = e.detail || {};
+    if (!oldPath || !newPath) return;
+    handleFileRename(oldPath, newPath);
+  });
 }
-function injectCSS$5() {
+function injectCSS$6() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="editors.css"]')) {
       return Promise.resolve();
@@ -172694,13 +172789,13 @@ function injectHTML$5() {
     }
   });
 }
-function initialize$6(_state) {
+function initialize$7(_state) {
   return __async(this, null, function* () {
     state$2 = _state;
     editorLayout = state$2.layout;
-    yield injectCSS$5();
+    yield injectCSS$6();
     yield injectHTML$5();
-    yield initialize$7(state$2);
+    yield initialize$8(state$2);
     setupEditorsEventListeners();
     initializeFileSync();
     setupAutosave();
@@ -172714,6 +172809,8 @@ let state$1 = null;
 let currentTab = "explorer";
 let contextMenuTargetFolder = null;
 let selectionAnchorPath = null;
+let renameModalState = null;
+let duplicateModalState = null;
 function getFileTreeScope() {
   return document.getElementById("file-tree") || document;
 }
@@ -172780,7 +172877,7 @@ let touchStartPosition = { x: 0, y: 0 };
 let longPressTimer = null;
 let longPressThreshold = 500;
 let touchMoveThreshold = 10;
-function showMessage(message, type = "info") {
+function showMessage$1(message, type = "info") {
   const messageDiv = document.createElement("div");
   messageDiv.className = `upload-message upload-message-${type}`;
   messageDiv.textContent = message;
@@ -172843,7 +172940,7 @@ function switchTab(tabName) {
     }
     const searchContainer = searchView.querySelector(".search-tab-container");
     if (searchContainer && !searchContainer.hasAttribute("data-initialized")) {
-      initialize$8(searchContainer);
+      initialize$9(searchContainer);
     }
   }
   currentTab = tabName;
@@ -173215,11 +173312,11 @@ function onDrop(e) {
   try {
     performMove(draggedData.path, targetPath, draggedData.isDirectory).catch((error) => {
       console.error("File move error:", error);
-      showMessage(`File move error: ${error.message}`, "error");
+      showMessage$1(`File move error: ${error.message}`, "error");
     });
   } catch (error) {
     console.error("Drop handling error:", error);
-    showMessage(`Drop handling error: ${error.message}`, "error");
+    showMessage$1(`Drop handling error: ${error.message}`, "error");
   }
   cleanupDrag();
 }
@@ -173654,10 +173751,10 @@ function openInTerminal(path, isDirectory, workspaceRoot) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      showMessage(`Opening terminal in: ${targetDirectory}`, "success");
+      showMessage$1(`Opening terminal in: ${targetDirectory}`, "success");
     } catch (error) {
       console.error("Failed to open terminal:", error);
-      showMessage("Failed to open terminal", "error");
+      showMessage$1("Failed to open terminal", "error");
     }
   });
 }
@@ -173705,20 +173802,37 @@ function confirmDeleteMultiple(selection) {
   });
 }
 function confirmRename(path, isDirectory) {
-  const itemType = isDirectory ? "folder" : "file";
+  showRenameModal(path, isDirectory);
+}
+function showRenameModal(path, isDirectory) {
+  if (!path) return;
   const currentName = path.split("/").pop();
   const basePath = path.substring(0, path.lastIndexOf("/")) || "";
-  const newName = prompt(`Enter new name for this ${itemType}:`, currentName);
-  if (newName && newName.trim() && newName !== currentName) {
-    const newPath = basePath ? `${basePath}/${newName.trim()}` : newName.trim();
-    performRename(path, newPath, isDirectory);
+  renameModalState = { oldPath: path, isDirectory, currentName, basePath };
+  const titleEl = document.getElementById("rename-item-title");
+  const labelEl = document.getElementById("rename-item-label");
+  const hintEl = document.getElementById("rename-item-hint");
+  const inputEl = document.getElementById("rename-item-name");
+  const submitBtn = document.getElementById("rename-item-submit");
+  if (titleEl) titleEl.textContent = isDirectory ? "Rename Folder" : "Rename File";
+  if (labelEl) labelEl.textContent = isDirectory ? "Folder Name" : "File Name";
+  if (hintEl) hintEl.textContent = basePath ? `Path: ${basePath}/` : "Path: /";
+  if (submitBtn) submitBtn.textContent = isDirectory ? "Rename Folder" : "Rename File";
+  if (inputEl) {
+    inputEl.value = currentName;
+    setTimeout(() => {
+      inputEl.focus();
+      inputEl.select();
+    }, 0);
   }
+  showModal("rename-item-modal");
 }
 function performRename(oldPath, newPath, isDirectory) {
   return __async(this, null, function* () {
     try {
       const response = yield renameItem(oldPath, newPath);
       if (response.success) {
+        qoomEvent$1.emit("fileRenamed", { oldPath, newPath, source: "explorer" });
       } else {
         alert(`Failed to rename ${isDirectory ? "folder" : "file"}: ${response.error}`);
       }
@@ -173728,17 +173842,33 @@ function performRename(oldPath, newPath, isDirectory) {
   });
 }
 function confirmDuplicate(path, isDirectory) {
-  const itemType = isDirectory ? "folder" : "file";
+  showDuplicateModal(path, isDirectory);
+}
+function showDuplicateModal(path, isDirectory) {
+  if (!path) return;
   const originalName = path.split("/").pop();
   const basePath = path.substring(0, path.lastIndexOf("/")) || "";
   const extension = isDirectory ? "" : originalName.includes(".") ? originalName.substring(originalName.lastIndexOf(".")) : "";
   const nameWithoutExt = isDirectory ? originalName : originalName.includes(".") ? originalName.substring(0, originalName.lastIndexOf(".")) : originalName;
   const defaultDuplicateName = `${nameWithoutExt}_copy${extension}`;
-  const newName = prompt(`Enter name for the duplicate ${itemType}:`, defaultDuplicateName);
-  if (newName && newName.trim()) {
-    const targetPath = basePath ? `${basePath}/${newName.trim()}` : newName.trim();
-    performDuplicate(path, targetPath, isDirectory);
+  duplicateModalState = { sourcePath: path, isDirectory, basePath, defaultDuplicateName };
+  const titleEl = document.getElementById("duplicate-item-title");
+  const labelEl = document.getElementById("duplicate-item-label");
+  const hintEl = document.getElementById("duplicate-item-hint");
+  const inputEl = document.getElementById("duplicate-item-name");
+  const submitBtn = document.getElementById("duplicate-item-submit");
+  if (titleEl) titleEl.textContent = isDirectory ? "Duplicate Folder" : "Duplicate File";
+  if (labelEl) labelEl.textContent = isDirectory ? "Folder Name" : "File Name";
+  if (hintEl) hintEl.textContent = basePath ? `Path: ${basePath}/` : "Path: /";
+  if (submitBtn) submitBtn.textContent = isDirectory ? "Duplicate Folder" : "Duplicate File";
+  if (inputEl) {
+    inputEl.value = defaultDuplicateName;
+    setTimeout(() => {
+      inputEl.focus();
+      inputEl.select();
+    }, 0);
   }
+  showModal("duplicate-item-modal");
 }
 function performDuplicate(sourcePath, targetPath, isDirectory) {
   return __async(this, null, function* () {
@@ -173969,16 +174099,16 @@ function downloadFile(filePath) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showMessage("Download started", "success");
+    showMessage$1("Download started", "success");
   } catch (error) {
     console.error("Download error:", error);
-    showMessage("Failed to download file: " + error.message, "error");
+    showMessage$1("Failed to download file: " + error.message, "error");
   }
 }
 function downloadFolder(folderPath) {
   return __async(this, null, function* () {
     try {
-      showMessage("Preparing folder download...", "info");
+      showMessage$1("Preparing folder download...", "info");
       const response = yield fetch("/editer/explorer/_api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174008,17 +174138,17 @@ function downloadFolder(folderPath) {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      showMessage("Folder download completed", "success");
+      showMessage$1("Folder download completed", "success");
     } catch (error) {
       console.error("Folder download error:", error);
-      showMessage("Failed to download folder: " + error.message, "error");
+      showMessage$1("Failed to download folder: " + error.message, "error");
     }
   });
 }
 function showModal(modalId) {
   const modal2 = document.getElementById(modalId);
   if (modal2) {
-    modal2.style.display = "block";
+    modal2.style.display = "flex";
     const firstInput = modal2.querySelector("input");
     if (firstInput) setTimeout(() => firstInput.focus(), 100);
   }
@@ -174037,6 +174167,16 @@ function hideModal(modalId) {
     });
     if (modalId === "create-file-modal" || modalId === "create-folder-modal") {
       contextMenuTargetFolder = null;
+    }
+    if (modalId === "rename-item-modal") {
+      renameModalState = null;
+      const hintEl = document.getElementById("rename-item-hint");
+      if (hintEl) hintEl.textContent = "";
+    }
+    if (modalId === "duplicate-item-modal") {
+      duplicateModalState = null;
+      const hintEl = document.getElementById("duplicate-item-hint");
+      if (hintEl) hintEl.textContent = "";
     }
   }
 }
@@ -174150,6 +174290,94 @@ function setupModalEvents() {
       });
     });
   }
+  const renameItemClose = document.getElementById("rename-item-close");
+  const renameItemCancel = document.getElementById("rename-item-cancel");
+  const renameItemSubmit = document.getElementById("rename-item-submit");
+  const renameItemInput = document.getElementById("rename-item-name");
+  if (renameItemClose) renameItemClose.addEventListener("click", () => hideModal("rename-item-modal"));
+  if (renameItemCancel) renameItemCancel.addEventListener("click", () => hideModal("rename-item-modal"));
+  if (renameItemSubmit) {
+    renameItemSubmit.addEventListener("click", function() {
+      return __async(this, null, function* () {
+        if (!renameModalState) {
+          hideModal("rename-item-modal");
+          return;
+        }
+        const newName = renameItemInput ? renameItemInput.value.trim() : "";
+        if (!newName) {
+          alert("Please enter a name");
+          if (renameItemInput) renameItemInput.focus();
+          return;
+        }
+        if (newName === renameModalState.currentName) {
+          hideModal("rename-item-modal");
+          return;
+        }
+        const newPath = renameModalState.basePath ? `${renameModalState.basePath}/${newName}` : newName;
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = "Renaming...";
+        try {
+          yield performRename(renameModalState.oldPath, newPath, renameModalState.isDirectory);
+          hideModal("rename-item-modal");
+        } finally {
+          this.disabled = false;
+          this.textContent = originalText;
+          renameModalState = null;
+        }
+      });
+    });
+  }
+  if (renameItemInput && renameItemSubmit) {
+    renameItemInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        renameItemSubmit.click();
+      }
+    });
+  }
+  const duplicateItemClose = document.getElementById("duplicate-item-close");
+  const duplicateItemCancel = document.getElementById("duplicate-item-cancel");
+  const duplicateItemSubmit = document.getElementById("duplicate-item-submit");
+  const duplicateItemInput = document.getElementById("duplicate-item-name");
+  if (duplicateItemClose) duplicateItemClose.addEventListener("click", () => hideModal("duplicate-item-modal"));
+  if (duplicateItemCancel) duplicateItemCancel.addEventListener("click", () => hideModal("duplicate-item-modal"));
+  if (duplicateItemSubmit) {
+    duplicateItemSubmit.addEventListener("click", function() {
+      return __async(this, null, function* () {
+        if (!duplicateModalState) {
+          hideModal("duplicate-item-modal");
+          return;
+        }
+        const newName = duplicateItemInput ? duplicateItemInput.value.trim() : "";
+        if (!newName) {
+          alert("Please enter a name");
+          if (duplicateItemInput) duplicateItemInput.focus();
+          return;
+        }
+        const targetPath = duplicateModalState.basePath ? `${duplicateModalState.basePath}/${newName}` : newName;
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = "Duplicating...";
+        try {
+          yield performDuplicate(duplicateModalState.sourcePath, targetPath, duplicateModalState.isDirectory);
+          hideModal("duplicate-item-modal");
+        } finally {
+          this.disabled = false;
+          this.textContent = originalText;
+          duplicateModalState = null;
+        }
+      });
+    });
+  }
+  if (duplicateItemInput && duplicateItemSubmit) {
+    duplicateItemInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        duplicateItemSubmit.click();
+      }
+    });
+  }
   window.addEventListener("click", function(event) {
     if (event.target.classList.contains("modal")) {
       hideModal(event.target.id);
@@ -174223,7 +174451,7 @@ function setupExplorerEventListeners() {
   qoomEvent$1.on("fileRenamed", refreshFileTree);
   qoomEvent$1.on("fileDeleted", refreshFileTree);
 }
-function injectCSS$4() {
+function injectCSS$5() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="explorer.css"]')) {
       return Promise.resolve();
@@ -174256,10 +174484,10 @@ function injectHTML$4() {
     }
   });
 }
-function initialize$5(_state) {
+function initialize$6(_state) {
   return __async(this, null, function* () {
     state$1 = _state;
-    yield injectCSS$4();
+    yield injectCSS$5();
     yield injectHTML$4();
     setupTabToggle();
     refreshFileTree();
@@ -174318,7 +174546,7 @@ function setupExplorerContextMenuEvents() {
     createFolderInFolder(e.detail);
   });
 }
-function injectCSS$3() {
+function injectCSS$4() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="history.css"]')) {
       return Promise.resolve();
@@ -174351,9 +174579,9 @@ function injectHTML$3() {
     }
   });
 }
-function initialize$4(_state) {
+function initialize$5(_state) {
   return __async(this, null, function* () {
-    yield injectCSS$3();
+    yield injectCSS$4();
     yield injectHTML$3();
     console.log("History initialized");
   });
@@ -174605,7 +174833,7 @@ class MonacoSettings2 {
     });
   }
 }
-function injectCSS$2() {
+function injectCSS$3() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="monaco-settings.css"]')) {
       return Promise.resolve();
@@ -174637,9 +174865,9 @@ function injectHTML$2() {
     }
   });
 }
-function initialize$3(state2) {
+function initialize$4(state2) {
   return __async(this, null, function* () {
-    yield injectCSS$2();
+    yield injectCSS$3();
     yield injectHTML$2();
     const monacoSettings = new MonacoSettings2(state2);
     monacoSettings.initialize();
@@ -174659,7 +174887,7 @@ function show(e) {
   notificationContainer.appendChild(notification);
   setTimeout(() => notification.remove(), 3e3);
 }
-function injectCSS$1() {
+function injectCSS$2() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="notify.css"]')) {
       return Promise.resolve();
@@ -174697,9 +174925,9 @@ function injectHTML$1() {
     }
   });
 }
-function initialize$2(state2) {
+function initialize$3(state2) {
   return __async(this, null, function* () {
-    yield injectCSS$1();
+    yield injectCSS$2();
     yield injectHTML$1();
     qoomEvent$1.on("showNotification", show);
     console.log("Notifier initialized");
@@ -174953,6 +175181,7 @@ function setupPreviewerEvents() {
   qoomEvent$1.on("panesUpdated", updatePreview);
   qoomEvent$1.on("addNewTab", updatePreview);
   qoomEvent$1.on("activeTabChangedInPane", updatePreview);
+  qoomEvent$1.on("fileRenamed", updatePreview);
 }
 function updatePreview() {
   return __async(this, null, function* () {
@@ -174972,7 +175201,7 @@ function updatePreview() {
     }
   });
 }
-function injectCSS() {
+function injectCSS$1() {
   return __async(this, null, function* () {
     if (document.querySelector('link[href*="previewer.css"]')) {
       return Promise.resolve();
@@ -175007,13 +175236,939 @@ function injectHTML() {
     }
   });
 }
-function initialize$1(_state) {
+function initialize$2(_state) {
   return __async(this, null, function* () {
     state = _state;
-    yield injectCSS();
+    yield injectCSS$1();
     yield injectHTML();
     setupPreviewerEvents();
     updatePreview();
+  });
+}
+const assets = {
+  close: "/view/applets/publisher/assets/ab1d94399957e76f55573113ee2b580c751a8270.svg",
+  github: "/view/applets/publisher/assets/773671a5ff970d91c6801fbe611612367fc4af81.svg",
+  githubLarge: "/view/applets/publisher/assets/eb0cc50cd47088ce12aa10818e1db911a2fa9bdc.svg",
+  qoom: "/view/favicon.png",
+  chevronRight: "/view/applets/publisher/assets/882dce62388e0cc724297c22ea144b8571d6c810.svg",
+  chevronDown: "/view/applets/publisher/assets/565cef13462393062c83d6e2bf3d9db43136a820.svg"
+};
+const html2CanvasCdn = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+let html2canvasCache = null;
+function loadHtml2Canvas(targetDocument) {
+  var _a3;
+  const existing = (_a3 = targetDocument.defaultView) == null ? void 0 : _a3.html2canvas;
+  if (existing) {
+    return Promise.resolve(existing);
+  }
+  if (html2canvasCache) {
+    return Promise.resolve(html2canvasCache);
+  }
+  return new Promise((resolve2, reject) => {
+    const script = targetDocument.createElement("script");
+    script.src = html2CanvasCdn;
+    script.async = true;
+    script.onload = () => {
+      var _a4;
+      html2canvasCache = (_a4 = targetDocument.defaultView) == null ? void 0 : _a4.html2canvas;
+      resolve2(html2canvasCache);
+    };
+    script.onerror = () => reject(new Error("Failed to load screenshot library"));
+    targetDocument.head.appendChild(script);
+  });
+}
+function captureProjectScreenshot(projectUrl, onProgress) {
+  return __async(this, null, function* () {
+    var _a3;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:1280px;height:720px;border:0;visibility:hidden;";
+    document.body.appendChild(iframe);
+    const cleanup = () => {
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+    };
+    try {
+      yield new Promise((resolve2, reject) => {
+        const timeout2 = setTimeout(() => {
+          reject(new Error("Screenshot timed out"));
+        }, 15e3);
+        iframe.onload = () => {
+          clearTimeout(timeout2);
+          resolve2();
+        };
+        iframe.onerror = () => {
+          clearTimeout(timeout2);
+          reject(new Error("Failed to load project preview"));
+        };
+        iframe.src = projectUrl;
+      });
+      const iframeDocument = iframe.contentDocument;
+      const iframeWindow = iframe.contentWindow;
+      if (!iframeDocument || !iframeWindow) {
+        throw new Error("Preview not available");
+      }
+      if ((_a3 = iframeDocument.fonts) == null ? void 0 : _a3.ready) {
+        yield iframeDocument.fonts.ready.catch(() => void 0);
+      }
+      yield new Promise((resolve2) => setTimeout(resolve2, 500));
+      onProgress == null ? void 0 : onProgress(25);
+      const html2canvas = yield loadHtml2Canvas(iframeDocument);
+      if (!html2canvas) {
+        throw new Error("Screenshot library unavailable");
+      }
+      onProgress == null ? void 0 : onProgress(50);
+      const canvas = yield html2canvas(iframeDocument.body, {
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: iframeWindow.innerWidth,
+        windowHeight: iframeWindow.innerHeight,
+        scrollX: 0,
+        scrollY: 0,
+        scale: 1
+      });
+      onProgress == null ? void 0 : onProgress(90);
+      return canvas.toDataURL("image/png", 1);
+    } finally {
+      cleanup();
+    }
+  });
+}
+function createSkeletonLoader(container2) {
+  const skeleton = document.createElement("div");
+  skeleton.className = "publisher-skeleton-loader";
+  skeleton.innerHTML = `
+        <div class="publisher-skeleton-line publisher-skeleton-line-1"></div>
+        <div class="publisher-skeleton-line publisher-skeleton-line-2"></div>
+        <div class="publisher-skeleton-line publisher-skeleton-line-3"></div>
+    `;
+  container2.appendChild(skeleton);
+  return skeleton;
+}
+function removeSkeletonLoader(skeleton) {
+  if (skeleton && skeleton.parentNode) {
+    skeleton.remove();
+  }
+}
+function updateSkeletonProgress(skeleton, progress) {
+  if (skeleton) {
+    const lines = skeleton.querySelectorAll(".publisher-skeleton-line");
+    lines.forEach((line, index) => {
+      const delay = index * 20;
+      const animationProgress = Math.max(0, progress - delay);
+      line.style.setProperty("--progress", `${animationProgress}%`);
+    });
+  }
+}
+function createProgressModal(title) {
+  const modal2 = document.createElement("div");
+  modal2.className = "publisher-modal publisher-progress-modal";
+  modal2.innerHTML = `
+        <div class="publisher-modal-content publisher-modal-content--sm">
+            <div class="publisher-modal-header">
+                <h3 class="publisher-modal-title">${title}</h3>
+            </div>
+            <div class="publisher-modal-body publisher-modal-body--center">
+                <div class="publisher-progress-container">
+                    <div class="publisher-progress-bar">
+                        <div class="publisher-progress-fill" style="width: 10%"></div>
+                    </div>
+                    <div class="publisher-progress-text">
+                        <span class="publisher-progress-label">Preparing...</span>
+                        <span class="publisher-progress-value">10%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+  document.body.appendChild(modal2);
+  return modal2;
+}
+function updateProgressBar(modal2, progress, label) {
+  if (!modal2) return;
+  const fill2 = modal2.querySelector(".publisher-progress-fill");
+  const value = modal2.querySelector(".publisher-progress-value");
+  const labelEl = modal2.querySelector(".publisher-progress-label");
+  if (fill2) fill2.style.width = `${progress}%`;
+  if (value) value.textContent = `${progress}%`;
+  if (labelEl) labelEl.textContent = label;
+}
+function removeProgressModal(modal2) {
+  if (modal2 && modal2.parentNode) {
+    modal2.classList.add("is-closing");
+    setTimeout(() => modal2.remove(), 300);
+  }
+}
+function resolveProjectPreviewUrl(projectPath) {
+  return __async(this, null, function* () {
+    const normalizedPath = projectPath.replace(/^\//, "");
+    const isFilePath = /[^/]+\.[a-z0-9]+$/i.test(normalizedPath);
+    const candidates = isFilePath ? [
+      `/render/${normalizedPath}`
+    ] : [
+      `/view/${normalizedPath}/index.html`,
+      `/view/${normalizedPath}/public/index.html`,
+      `/view/${normalizedPath}/dist/index.html`,
+      `/render/${normalizedPath}/index.html`
+    ];
+    for (const url of candidates) {
+      try {
+        const response = yield fetch(url, { method: "GET" });
+        if (response.ok) {
+          return url;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    throw new Error("Preview page not found");
+  });
+}
+function showMessage(message, type = "info", duration = 3e3) {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = `publisher-toast publisher-toast-${type}`;
+  messageDiv.textContent = message;
+  messageDiv.setAttribute("role", "alert");
+  document.body.appendChild(messageDiv);
+  messageDiv.offsetHeight;
+  messageDiv.classList.add("is-visible");
+  const timeout2 = setTimeout(() => {
+    messageDiv.classList.remove("is-visible");
+    setTimeout(() => messageDiv.remove(), 300);
+  }, duration);
+  return () => clearTimeout(timeout2);
+}
+function getProjectFolderPath(path, isDirectory) {
+  const normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+  if (!isDirectory) {
+    const parts = normalizedPath.split("/");
+    if (parts.length === 1) {
+      return null;
+    }
+    parts.pop();
+    return parts.join("/");
+  }
+  return normalizedPath;
+}
+function removeModal(id) {
+  const existing = document.getElementById(id);
+  if (existing) {
+    existing.remove();
+  }
+}
+function createModal(id, contentClass, innerHtml) {
+  removeModal(id);
+  const modal2 = document.createElement("div");
+  modal2.id = id;
+  modal2.className = "publisher-modal";
+  modal2.innerHTML = `<div class="publisher-modal-content ${contentClass}">${innerHtml}</div>`;
+  document.body.appendChild(modal2);
+  return modal2;
+}
+function bindModalClose(modal2, closeSelector) {
+  const closeButton = modal2.querySelector(closeSelector);
+  const closeModal2 = () => {
+    modal2.remove();
+  };
+  if (closeButton) {
+    closeButton.addEventListener("click", closeModal2);
+  }
+  modal2.addEventListener("click", (event) => {
+    if (event.target === modal2) {
+      closeModal2();
+    }
+  });
+  const escHandler = (event) => {
+    if (event.key === "Escape") {
+      closeModal2();
+      document.removeEventListener("keydown", escHandler);
+    }
+  };
+  document.addEventListener("keydown", escHandler);
+  return closeModal2;
+}
+function showPublishStartModal(path, isDirectory) {
+  const projectFolderPath = getProjectFolderPath(path, isDirectory);
+  if (!projectFolderPath) {
+    showMessage("Project folder not found.", "error");
+    return;
+  }
+  const projectName = projectFolderPath.split("/").pop() || projectFolderPath;
+  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  const modal2 = createModal(
+    "publisher-modal-start",
+    "publisher-modal-content--md",
+    `
+        <div class="publisher-modal-header">
+            <h3 class="publisher-modal-title">Publish Project</h3>
+            <button type="button" class="publisher-close-btn" aria-label="Close">
+                <img src="${assets.close}" alt="" />
+            </button>
+        </div>
+        <div class="publisher-modal-body publisher-modal-body--stack">
+            <div class="publisher-project-card">
+                <span class="publisher-project-label">PROJECT:</span>
+                <span class="publisher-project-name">${projectName}</span>
+            </div>
+            <p class="publisher-subtitle">Choose where to publish</p>
+            <div class="publisher-options-list">
+                <button type="button" class="publisher-option-card is-primary" data-option="github">
+                    <span class="publisher-option-icon">
+                        <img src="${assets.github}" alt="" />
+                    </span>
+                    <span class="publisher-option-text">
+                        <span class="publisher-option-title">Publish to GitHub</span>
+                        <span class="publisher-option-description">Push your project to a new or existing GitHub repository. Great for version control and collaboration.</span>
+                    </span>
+                    <span class="publisher-option-arrow">
+                        <img src="${assets.chevronRight}" alt="" />
+                    </span>
+                </button>
+                <button type="button" class="publisher-option-card" data-option="qoom">
+                    <span class="publisher-option-icon">
+                        <img src="${assets.qoom}" alt="" />
+                    </span>
+                    <span class="publisher-option-text">
+                        <span class="publisher-option-title">Publish to Qoom Community</span>
+                        <span class="publisher-option-description">Share your project with the Qoom community. Make it discoverable and get feedback.</span>
+                    </span>
+                    <span class="publisher-option-arrow">
+                        <img src="${assets.chevronRight}" alt="" />
+                    </span>
+                </button>
+            </div>
+        </div>
+        <div class="publisher-modal-footer publisher-modal-footer--end">
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="cancel">Cancel</button>
+        </div>
+        `
+  );
+  const closeModal2 = bindModalClose(modal2, ".publisher-close-btn");
+  modal2.querySelector('[data-action="cancel"]').addEventListener("click", closeModal2);
+  modal2.querySelectorAll(".publisher-option-card").forEach((button) => {
+    button.addEventListener("click", () => {
+      const option = button.dataset.option;
+      closeModal2();
+      if (option === "github") {
+        handleGitHubPublish(projectFolderPath);
+      } else {
+        showQoomPublishModal(projectFolderPath, normalizedPath);
+      }
+    });
+  });
+}
+function handleGitHubPublish(projectFolderPath) {
+  return __async(this, null, function* () {
+    let hasToken = false;
+    try {
+      const repoListResponse = yield fetch("/edit/publisher/_api/github/repos");
+      if (repoListResponse.ok) {
+        const repoData = yield repoListResponse.json();
+        if (repoData.success) {
+          hasToken = true;
+        }
+      }
+    } catch (error) {
+      hasToken = false;
+    }
+    if (!hasToken) {
+      showConnectToGitHubModal(projectFolderPath);
+      return;
+    }
+    showGitHubPublishModal(projectFolderPath);
+  });
+}
+function showConnectToGitHubModal(projectFolderPath) {
+  const modal2 = createModal(
+    "publisher-modal-connect",
+    "publisher-modal-content--sm",
+    `
+        <div class="publisher-modal-header">
+            <h3 class="publisher-modal-title">Connect to GitHub</h3>
+            <button type="button" class="publisher-close-btn" aria-label="Close">
+                <img src="${assets.close}" alt="" />
+            </button>
+        </div>
+        <div class="publisher-modal-body publisher-modal-body--center">
+            <div class="publisher-icon-stack">
+                <img src="${assets.githubLarge}" alt="" />
+            </div>
+            <p class="publisher-center-title">Authentication Required</p>
+            <p class="publisher-center-text">To publish projects to GitHub, you need to connect your GitHub account.</p>
+            <button type="button" class="publisher-btn publisher-btn-primary" data-action="start-auth" style="margin: 20px auto; display: block; padding: 12px 24px;">Start GitHub Login</button>
+            <div data-role="auth-step" style="display: none; margin-top: 20px;">
+                <div class="publisher-code-display">
+                    <p class="publisher-step-text">1. Copy this code:</p>
+                    <span class="publisher-user-code" data-role="user-code">----</span>
+                    <p class="publisher-step-text" style="margin-top: 20px;">2. Click below to enter the code on GitHub:</p>
+                    <a href="#" target="_blank" class="publisher-btn publisher-btn-outline" data-role="verification-link">Open GitHub Verification</a>
+                </div>
+                <p data-role="status-msg" class="publisher-status-msg">Waiting for authentication...</p>
+            </div>
+        </div>
+        <div class="publisher-modal-footer">
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="logout" data-role="logout-btn">Logout</button>
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="cancel">Cancel</button>
+        </div>
+        `
+  );
+  const closeModal2 = bindModalClose(modal2, ".publisher-close-btn");
+  modal2.querySelector('[data-action="cancel"]').addEventListener("click", closeModal2);
+  const logoutBtn = modal2.querySelector('[data-action="logout"]');
+  logoutBtn.addEventListener("click", () => __async(null, null, function* () {
+    try {
+      yield fetch("/edit/publisher/_api/auth/github/logout", { method: "POST" });
+      closeModal2();
+      showConnectToGitHubModal(projectFolderPath);
+    } catch (error) {
+      showMessage("Logout failed: " + error.message, "error");
+    }
+  }));
+  const startAuthBtn = modal2.querySelector('[data-action="start-auth"]');
+  const authStep = modal2.querySelector('[data-role="auth-step"]');
+  const userCodeEl = modal2.querySelector('[data-role="user-code"]');
+  const verificationLink = modal2.querySelector('[data-role="verification-link"]');
+  const statusMsg = modal2.querySelector('[data-role="status-msg"]');
+  startAuthBtn.addEventListener("click", () => __async(null, null, function* () {
+    startAuthBtn.disabled = true;
+    startAuthBtn.textContent = "Requesting code...";
+    try {
+      const res = yield fetch("/edit/publisher/_api/auth/github/device/code", { method: "POST" });
+      const json = yield res.json();
+      if (!json.success) throw new Error(json.message || "Failed to start authentication");
+      const { user_code, verification_uri, device_code, interval } = json.data;
+      userCodeEl.textContent = user_code;
+      verificationLink.href = verification_uri;
+      startAuthBtn.style.display = "none";
+      authStep.style.display = "block";
+      pollGitHubAuth(device_code, interval || 5, statusMsg, () => {
+        closeModal2();
+        showGitHubPublishModal(projectFolderPath);
+      });
+    } catch (e) {
+      showMessage("Authentication failed: " + e.message, "error");
+      startAuthBtn.disabled = false;
+      startAuthBtn.textContent = "Start GitHub Login";
+    }
+  }));
+}
+function pollGitHubAuth(deviceCode, interval, statusMsg, onSuccess) {
+  return __async(this, null, function* () {
+    let currentInterval = interval;
+    const check = () => __async(null, null, function* () {
+      try {
+        const res = yield fetch("/edit/publisher/_api/auth/github/device/poll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device_code: deviceCode })
+        });
+        const json = yield res.json();
+        const data = json.data || {};
+        if (json.success && data.status === "complete") {
+          statusMsg.textContent = "✅ Authentication successful!";
+          statusMsg.style.color = "var(--brand-primary)";
+          setTimeout(onSuccess, 1e3);
+        } else if (data.status === "slow_down") {
+          if (data.interval) {
+            currentInterval = data.interval;
+          } else {
+            currentInterval += 5;
+          }
+          statusMsg.textContent = `⏳ Waiting... (${currentInterval}s interval)`;
+          setTimeout(check, currentInterval * 1e3);
+        } else if (data.status === "pending") {
+          statusMsg.textContent = "⏳ Waiting for you to authorize on GitHub...";
+          setTimeout(check, currentInterval * 1e3);
+        } else {
+          statusMsg.textContent = "❌ " + (data.error_description || "Authentication failed");
+          statusMsg.style.color = "#ef4444";
+        }
+      } catch (e) {
+        setTimeout(check, currentInterval * 1e3);
+      }
+    });
+    check();
+  });
+}
+function showGitHubPublishModal(projectFolderPath) {
+  return __async(this, null, function* () {
+    var _a3;
+    const projectName = projectFolderPath.split("/").pop();
+    let repoList = [];
+    try {
+      const repoListResponse = yield fetch("/edit/publisher/_api/github/repos");
+      if (repoListResponse.ok) {
+        const repoData = yield repoListResponse.json();
+        repoList = ((_a3 = repoData.data) == null ? void 0 : _a3.gitRepoList) || [];
+      }
+    } catch (error) {
+      repoList = [];
+    }
+    const repoOptions = repoList.length ? repoList.map((repo) => `<option value="${repo}">${repo}</option>`).join("") : '<option value="" disabled>No repositories found</option>';
+    const modal2 = createModal(
+      "publisher-modal-github",
+      "publisher-modal-content--lg",
+      `
+        <div class="publisher-modal-header">
+            <h3 class="publisher-modal-title">Publish to GitHub</h3>
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="logout" style="margin-left: auto; padding: 6px 12px; font-size: 13px; margin-right: 12px;">Logout</button>
+            <button type="button" class="publisher-close-btn" aria-label="Close">
+                <img src="${assets.close}" alt="" />
+            </button>
+        </div>
+        <div class="publisher-modal-body">
+            <div class="publisher-repo-section">
+                    <p class="publisher-subtitle">Choose how you want to publish:</p>
+                <div class="publisher-repo-options">
+                    <div class="publisher-repo-card is-selected" data-option="existing">
+                        <span class="publisher-radio"><span class="publisher-radio-dot"></span></span>
+                        <div class="publisher-option-text">
+                            <p class="publisher-repo-title">Publish to Existing Repository</p>
+                                <p class="publisher-repo-description">Pick a repo you already own. We'll push your project to it.</p>
+                            <div class="publisher-field">
+                                <span class="publisher-field-label">Select Repository</span>
+                                <div class="publisher-select-wrap">
+                                    <select class="publisher-select" data-role="repo-select">
+                                        <option value="" selected disabled>Choose a repository...</option>
+                                        ${repoOptions}
+                                    </select>
+                                    <img class="publisher-select-icon" src="${assets.chevronDown}" alt="" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="publisher-repo-card" data-option="new">
+                        <span class="publisher-radio"></span>
+                        <div class="publisher-option-text">
+                            <p class="publisher-repo-title">Create New Repository</p>
+                            <p class="publisher-repo-description">Create a brand new repository on GitHub.</p>
+                            <div class="publisher-field">
+                                <span class="publisher-field-label">Repository Name</span>
+                                <input type="text" class="publisher-input" placeholder="my-awesome-project" value="${projectName}" data-role="new-repo-name" />
+                            </div>
+                            <div class="publisher-field">
+                                <span class="publisher-field-label">Description (Optional)</span>
+                                <input type="text" class="publisher-input" placeholder="A brief description of your project" data-role="new-repo-desc" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="publisher-modal-footer">
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="cancel">Cancel</button>
+            <button type="button" class="publisher-btn publisher-btn-primary" data-action="publish" disabled>Publish</button>
+        </div>
+        `
+    );
+    const closeModal2 = bindModalClose(modal2, ".publisher-close-btn");
+    const optionCards = modal2.querySelectorAll(".publisher-repo-card");
+    const publishButton = modal2.querySelector('[data-action="publish"]');
+    modal2.querySelector('[data-action="logout"]').addEventListener("click", () => __async(null, null, function* () {
+      try {
+        yield fetch("/edit/publisher/_api/auth/github/logout", { method: "POST" });
+        closeModal2();
+        showMessage("Logged out successfully", "success");
+        showConnectToGitHubModal(projectFolderPath);
+      } catch (error) {
+        showMessage("Logout failed: " + error.message, "error");
+      }
+    }));
+    optionCards.forEach((card) => {
+      card.addEventListener("click", () => {
+        optionCards.forEach((item) => item.classList.remove("is-selected"));
+        card.classList.add("is-selected");
+        updatePublishState();
+      });
+    });
+    modal2.querySelector('[data-action="cancel"]').addEventListener("click", closeModal2);
+    const repoSelect = modal2.querySelector('[data-role="repo-select"]');
+    const newRepoNameInput = modal2.querySelector('[data-role="new-repo-name"]');
+    const updatePublishState = () => {
+      const selectedCard = modal2.querySelector(".publisher-repo-card.is-selected");
+      const option = selectedCard ? selectedCard.dataset.option : "existing";
+      if (option === "existing") {
+        publishButton.disabled = !repoSelect.value;
+      } else {
+        publishButton.disabled = !newRepoNameInput.value.trim();
+      }
+    };
+    repoSelect.addEventListener("change", updatePublishState);
+    newRepoNameInput.addEventListener("input", updatePublishState);
+    publishButton.addEventListener("click", () => __async(null, null, function* () {
+      var _a4, _b3, _c2;
+      const selectedCard = modal2.querySelector(".publisher-repo-card.is-selected");
+      const option = selectedCard ? selectedCard.dataset.option : "existing";
+      let repoName = projectName;
+      if (option === "existing") {
+        const select = modal2.querySelector('[data-role="repo-select"]');
+        repoName = select.value;
+        if (!repoName) {
+          showMessage("Please select a repository.", "error");
+          return;
+        }
+      } else {
+        repoName = modal2.querySelector('[data-role="new-repo-name"]').value.trim();
+        const repoDesc = modal2.querySelector('[data-role="new-repo-desc"]').value.trim();
+        if (!repoName) {
+          showMessage("Please enter a repository name.", "error");
+          return;
+        }
+        const progressModal2 = createProgressModal("Creating Repository");
+        try {
+          updateProgressBar(progressModal2, 30, "Creating new repository...");
+          const createRes = yield fetch("/edit/publisher/_api/github/repos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              repoName,
+              isPrivate: false,
+              description: repoDesc || void 0
+            })
+          });
+          if (!createRes.ok) {
+            removeProgressModal(progressModal2);
+            const errorData = yield createRes.json().catch(() => ({ message: `HTTP ${createRes.status}` }));
+            throw new Error(errorData.message || errorData.error || "Failed to create repository");
+          }
+          const createData = yield createRes.json();
+          if (!createData.success) {
+            removeProgressModal(progressModal2);
+            throw new Error(createData.message || createData.error || "Failed to create repository");
+          }
+          removeProgressModal(progressModal2);
+        } catch (error) {
+          showMessage(`Repository creation failed: ${error.message}`, "error");
+          return;
+        }
+      }
+      closeModal2();
+      const progressModal = createProgressModal("Publishing to GitHub");
+      try {
+        updateProgressBar(progressModal, 10, "Preparing files...");
+        const payload = {
+          folder: projectFolderPath,
+          repoName,
+          commitMessage: "Published from Qoom"
+        };
+        console.log("[Publisher] Publishing to GitHub:", payload);
+        console.log("[Publisher] Full path:", projectFolderPath);
+        updateProgressBar(progressModal, 20, "Uploading to GitHub...");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3e4);
+        const response = yield fetch("/edit/publisher/_api/publish/github", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          updateProgressBar(progressModal, 100, "Failed!");
+          removeProgressModal(progressModal);
+          const errorData = yield response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
+          throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        updateProgressBar(progressModal, 75, "Uploading files...");
+        const data = yield response.json();
+        console.log("[Publisher] Upload response:", data);
+        if (data.success) {
+          const repoUrl = (_a4 = data.data) == null ? void 0 : _a4.repoUrl;
+          const pushedFiles = ((_b3 = data.data) == null ? void 0 : _b3.pushedFiles) || 0;
+          const failedFiles = ((_c2 = data.data) == null ? void 0 : _c2.failedFiles) || 0;
+          updateProgressBar(progressModal, 100, "Published!");
+          setTimeout(() => removeProgressModal(progressModal), 1e3);
+          if (failedFiles > 0) {
+            showMessage(`Published with ${failedFiles} errors. ${pushedFiles} files uploaded.`, "warning");
+          } else {
+            showMessage(`Published! ${pushedFiles} files uploaded`, "success");
+          }
+          if (repoUrl) {
+            window.open(repoUrl, "_blank");
+          }
+        } else {
+          updateProgressBar(progressModal, 100, "Failed!");
+          setTimeout(() => removeProgressModal(progressModal), 1e3);
+          throw new Error(data.error || data.message || "Failed to publish to GitHub");
+        }
+      } catch (error) {
+        console.error("[Publisher] Upload error:", error);
+        removeProgressModal(progressModal);
+        if (error.name === "AbortError") {
+          showMessage("Upload timed out (30s). The server might still be processing. Check GitHub.", "error");
+        } else if (!navigator.onLine) {
+          showMessage("No internet connection", "error");
+        } else {
+          showMessage(`Publish failed: ${error.message}`, "error");
+        }
+      }
+    }));
+    repoSelect.addEventListener("change", () => {
+      if (repoSelect.value) {
+        repoSelect.classList.add("is-filled");
+      } else {
+        repoSelect.classList.remove("is-filled");
+      }
+      updatePublishState();
+    });
+    updatePublishState();
+  });
+}
+function showQoomPublishModal(projectFolderPath, projectPathOverride) {
+  const projectName = projectFolderPath.split("/").pop();
+  let coverImage = null;
+  const modal2 = createModal(
+    "publisher-modal-qoom",
+    "publisher-modal-content--lg",
+    `
+        <div class="publisher-modal-header">
+            <h3 class="publisher-modal-title">Publish to Qoom Community</h3>
+            <button type="button" class="publisher-close-btn" aria-label="Close">
+                <img src="${assets.close}" alt="" />
+            </button>
+        </div>
+        <div class="publisher-modal-body">
+            <div class="publisher-form">
+                <div class="publisher-field">
+                    <div class="publisher-field">
+                    <div class="publisher-label-row">
+                        <span class="publisher-label">Project Title</span>
+                        <span class="publisher-required">*</span>
+                    </div>
+                    <input type="text" class="publisher-input" value="${projectName}" data-role="qoom-title" />
+                </div>
+                <div class="publisher-field">
+                    <div class="publisher-label-row">
+                        <span class="publisher-label">Description</span>
+                        <span class="publisher-required">*</span>
+                    </div>
+                    <textarea class="publisher-textarea" placeholder="A short, clear description of your project." data-role="qoom-description"></textarea>
+                </div>
+                <div class="publisher-field">
+                    <div class="publisher-label-row">
+                        <span class="publisher-label">Cover Image</span>
+                            <span class="publisher-optional">Optional</span>
+                    </div>
+                    <div class="publisher-cover-card">
+                        <div class="publisher-cover-preview" data-role="qoom-cover-preview">
+                            <span class="publisher-cover-placeholder">Add a cover image</span>
+                        </div>
+                        <button type="button" class="publisher-cover-btn" data-action="cover-screenshot">Take a Screenshot</button>
+                        <button type="button" class="publisher-cover-link" data-action="cover-select">or Select a File</button>
+                        <input type="file" data-role="qoom-cover-input" accept="image/*" style="display:none" />
+                    </div>
+                        <span class="publisher-hint">Optional. A cover image helps your project stand out.</span>
+                </div>
+            </div>
+        </div>
+        <div class="publisher-modal-footer">
+            <button type="button" class="publisher-btn publisher-btn-secondary" data-action="cancel">Cancel</button>
+                <button type="button" class="publisher-btn publisher-btn-primary" data-action="publish" disabled>Publish</button>
+        </div>
+        `
+  );
+  const closeModal2 = bindModalClose(modal2, ".publisher-close-btn");
+  const coverInput = modal2.querySelector('[data-role="qoom-cover-input"]');
+  const coverPreview = modal2.querySelector('[data-role="qoom-cover-preview"]');
+  const coverSelect = modal2.querySelector('[data-action="cover-select"]');
+  const coverScreenshot = modal2.querySelector('[data-action="cover-screenshot"]');
+  const setCoverPreview = (src) => {
+    coverPreview.style.backgroundImage = `url('${src}')`;
+    coverPreview.classList.add("is-filled");
+    coverPreview.textContent = "";
+  };
+  coverSelect.addEventListener("click", () => {
+    coverInput.click();
+  });
+  coverInput.addEventListener("change", () => {
+    if (coverInput.files && coverInput.files[0]) {
+      const file = coverInput.files[0];
+      coverImage = { type: "file", file };
+      const previewUrl = URL.createObjectURL(file);
+      setCoverPreview(previewUrl);
+    }
+  });
+  coverScreenshot.addEventListener("click", () => __async(null, null, function* () {
+    coverScreenshot.disabled = true;
+    const originalText = coverScreenshot.textContent;
+    const skeleton = createSkeletonLoader(coverPreview);
+    try {
+      coverScreenshot.textContent = "Taking Screenshot...";
+      const normalizedPath = projectPathOverride ? projectPathOverride.replace(/^\//, "") : projectFolderPath;
+      const projectUrl = yield resolveProjectPreviewUrl(normalizedPath);
+      const dataUrl = yield captureProjectScreenshot(projectUrl, (progress) => {
+        updateSkeletonProgress(skeleton, progress);
+      });
+      removeSkeletonLoader(skeleton);
+      coverImage = { type: "dataUrl", dataUrl };
+      setCoverPreview(dataUrl);
+    } catch (error) {
+      removeSkeletonLoader(skeleton);
+      showMessage(`Screenshot failed: ${error.message}`, "error");
+    } finally {
+      coverScreenshot.disabled = false;
+      coverScreenshot.textContent = originalText;
+    }
+  }));
+  const qoomPublishButton = modal2.querySelector('[data-action="publish"]');
+  const qoomTitleInput = modal2.querySelector('[data-role="qoom-title"]');
+  const qoomDescriptionInput = modal2.querySelector('[data-role="qoom-description"]');
+  const updateQoomPublishState = () => {
+    const title = qoomTitleInput.value.trim();
+    const description = qoomDescriptionInput.value.trim();
+    qoomPublishButton.disabled = !(title && description);
+  };
+  qoomTitleInput.addEventListener("input", updateQoomPublishState);
+  qoomDescriptionInput.addEventListener("input", updateQoomPublishState);
+  modal2.querySelector('[data-action="cancel"]').addEventListener("click", closeModal2);
+  qoomPublishButton.addEventListener("click", () => __async(null, null, function* () {
+    const title = modal2.querySelector('[data-role="qoom-title"]').value.trim();
+    const description = modal2.querySelector('[data-role="qoom-description"]').value.trim();
+    if (!title) {
+      showMessage("Please enter a project title.", "error");
+      return;
+    }
+    if (!description) {
+      showMessage("Please enter a project description.", "error");
+      return;
+    }
+    closeModal2();
+    yield handleQoomPublish(projectFolderPath, title, description, coverImage);
+  }));
+  updateQoomPublishState();
+}
+function handleQoomPublish(projectFolderPath, title, description, coverImage) {
+  return __async(this, null, function* () {
+    const progressModal = createProgressModal("Publishing to Qoom Community");
+    try {
+      updateProgressBar(progressModal, 10, "Preparing project...");
+      let coverImageData = null;
+      if (coverImage) {
+        updateProgressBar(progressModal, 25, "Processing cover image...");
+        const resolvedMedia = yield resolveCoverMedia(coverImage);
+        if (resolvedMedia) {
+          coverImageData = resolvedMedia;
+        }
+      }
+      updateProgressBar(progressModal, 50, "Submitting to community...");
+      const payload = {
+        projectId: projectFolderPath,
+        title,
+        description,
+        coverImage: coverImageData
+      };
+      const response = yield fetch("/edit/publisher/_api/community/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        updateProgressBar(progressModal, 100, "Failed!");
+        removeProgressModal(progressModal);
+        const errorData = yield response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      updateProgressBar(progressModal, 90, "Finalizing...");
+      const data = yield response.json();
+      if (data.success) {
+        updateProgressBar(progressModal, 100, "Published!");
+        setTimeout(() => removeProgressModal(progressModal), 500);
+        showMessage("Project successfully published to Qoom Community!", "success");
+      } else {
+        updateProgressBar(progressModal, 100, "Failed!");
+        removeProgressModal(progressModal);
+        throw new Error(data.error || data.message || "Failed to publish to Qoom Community");
+      }
+    } catch (error) {
+      removeProgressModal(progressModal);
+      showMessage(`Publish failed: ${error.message}`, "error");
+    }
+  });
+}
+function resolveCoverMedia(coverImage) {
+  return __async(this, null, function* () {
+    if (coverImage.type === "file") {
+      return readFileAsMedia(coverImage.file);
+    }
+    if (coverImage.type === "base64") {
+      return {
+        path: "cover.png",
+        filename: "cover.png",
+        content: coverImage.base64,
+        encoding: "base64",
+        contentType: coverImage.contentType || "image/png"
+      };
+    }
+    if (coverImage.type === "dataUrl") {
+      const base64 = coverImage.dataUrl.split(",")[1];
+      const contentTypeMatch = coverImage.dataUrl.match(/data:(.*);base64/);
+      return {
+        path: "cover.png",
+        filename: "cover.png",
+        content: base64,
+        encoding: "base64",
+        contentType: contentTypeMatch ? contentTypeMatch[1] : "image/png"
+      };
+    }
+    if (coverImage.type === "url") {
+      const response = yield fetch(coverImage.url);
+      if (!response.ok) {
+        throw new Error("Failed to fetch cover image");
+      }
+      const blob = yield response.blob();
+      const file = new File([blob], "cover.png", { type: blob.type || "image/png" });
+      return readFileAsMedia(file);
+    }
+    return null;
+  });
+}
+function readFileAsMedia(file) {
+  return new Promise((resolve2, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(",")[1];
+      resolve2({
+        path: file.name,
+        filename: file.name,
+        content: base64,
+        encoding: "base64",
+        contentType: file.type || "image/png",
+        size: file.size
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function injectCSS() {
+  return __async(this, null, function* () {
+    if (document.querySelector('link[href*="publisher.css"]')) {
+      return;
+    }
+    yield new Promise((resolve2, reject) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.type = "text/css";
+      link.href = "/view/applets/publisher/frontend/publisher.css";
+      link.onload = resolve2;
+      link.onerror = reject;
+      document.head.appendChild(link);
+    });
+  });
+}
+function initialize$1(_state) {
+  return __async(this, null, function* () {
+    yield injectCSS();
+    qoomEvent$1.on("publisher:open", (event) => {
+      const { path, isDirectory } = event.detail || {};
+      if (path) {
+        showPublishStartModal(path, isDirectory);
+      }
+    });
   });
 }
 if (window.monaco) {
@@ -175269,6 +176424,7 @@ function initializeEvents() {
   qoomEvent$1.on("addNewTab", updateUrl);
   qoomEvent$1.on("closedTabs", updateUrl);
   qoomEvent$1.on("activeTabChangedInPane", updateUrl);
+  qoomEvent$1.on("activeFilePathChanged", updateUrl);
   dom.explorerResize.addEventListener("mousedown", (e) => {
     if (editerState$1.explorerPanelCollapsed) return;
     dom.explorerResize.style.backgroundColor = "#0f0";
@@ -175348,9 +176504,10 @@ function initialize() {
       editerState$1 = editerState$1 || new Editer(state2);
       window.editerState = editerState$1;
       yield Promise.all([
+        initialize$d(editerState$1),
         initialize$c(editerState$1),
         initialize$b(editerState$1),
-        initialize$a(editerState$1),
+        initialize$7(editerState$1),
         initialize$6(editerState$1),
         initialize$5(editerState$1),
         initialize$4(editerState$1),

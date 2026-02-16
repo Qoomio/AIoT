@@ -21,6 +21,8 @@ let currentTab = 'explorer';
 let dragCounter = 0;
 let contextMenuTargetFolder = null;
 let selectionAnchorPath = null;
+let renameModalState = null;
+let duplicateModalState = null;
 
 function getFileTreeScope() {
     return document.getElementById('file-tree') || document;
@@ -1251,20 +1253,41 @@ async function confirmDeleteMultiple(selection) {
 }
 
 function confirmRename(path, isDirectory) {
-    const itemType = isDirectory ? 'folder' : 'file';
+    showRenameModal(path, isDirectory);
+}
+
+function showRenameModal(path, isDirectory) {
+    if (!path) return;
     const currentName = path.split('/').pop();
     const basePath = path.substring(0, path.lastIndexOf('/')) || '';
-    const newName = prompt(`Enter new name for this ${itemType}:`, currentName);
-    if (newName && newName.trim() && newName !== currentName) {
-        const newPath = basePath ? `${basePath}/${newName.trim()}` : newName.trim();
-        performRename(path, newPath, isDirectory);
+    renameModalState = { oldPath: path, isDirectory, currentName, basePath };
+
+    const titleEl = document.getElementById('rename-item-title');
+    const labelEl = document.getElementById('rename-item-label');
+    const hintEl = document.getElementById('rename-item-hint');
+    const inputEl = document.getElementById('rename-item-name');
+    const submitBtn = document.getElementById('rename-item-submit');
+
+    if (titleEl) titleEl.textContent = isDirectory ? 'Rename Folder' : 'Rename File';
+    if (labelEl) labelEl.textContent = isDirectory ? 'Folder Name' : 'File Name';
+    if (hintEl) hintEl.textContent = basePath ? `Path: ${basePath}/` : 'Path: /';
+    if (submitBtn) submitBtn.textContent = isDirectory ? 'Rename Folder' : 'Rename File';
+    if (inputEl) {
+        inputEl.value = currentName;
+        setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 0);
     }
+
+    showModal('rename-item-modal');
 }
 async function performRename(oldPath, newPath, isDirectory) {
     try {
         const response = await renameItem(oldPath, newPath);
         if (response.success) {
-            // do nothing. Watcher will trigger the next sequence of changes
+			// Optimistically notify listeners so tabs/preview update immediately.
+			qoomEvent.emit('fileRenamed', { oldPath, newPath, source: 'explorer' });
         } else {
             alert(`Failed to rename ${isDirectory ? 'folder' : 'file'}: ${response.error}`);
         }
@@ -1274,17 +1297,38 @@ async function performRename(oldPath, newPath, isDirectory) {
 }
 
 function confirmDuplicate(path, isDirectory) {
-    const itemType = isDirectory ? 'folder' : 'file';
+    showDuplicateModal(path, isDirectory);
+}
+
+function showDuplicateModal(path, isDirectory) {
+    if (!path) return;
     const originalName = path.split('/').pop();
     const basePath = path.substring(0, path.lastIndexOf('/')) || '';
     const extension = isDirectory ? '' : (originalName.includes('.') ? originalName.substring(originalName.lastIndexOf('.')) : '');
     const nameWithoutExt = isDirectory ? originalName : (originalName.includes('.') ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName);
     const defaultDuplicateName = `${nameWithoutExt}_copy${extension}`;
-    const newName = prompt(`Enter name for the duplicate ${itemType}:`, defaultDuplicateName);
-    if (newName && newName.trim()) {
-        const targetPath = basePath ? `${basePath}/${newName.trim()}` : newName.trim();
-        performDuplicate(path, targetPath, isDirectory);
+
+    duplicateModalState = { sourcePath: path, isDirectory, basePath, defaultDuplicateName };
+
+    const titleEl = document.getElementById('duplicate-item-title');
+    const labelEl = document.getElementById('duplicate-item-label');
+    const hintEl = document.getElementById('duplicate-item-hint');
+    const inputEl = document.getElementById('duplicate-item-name');
+    const submitBtn = document.getElementById('duplicate-item-submit');
+
+    if (titleEl) titleEl.textContent = isDirectory ? 'Duplicate Folder' : 'Duplicate File';
+    if (labelEl) labelEl.textContent = isDirectory ? 'Folder Name' : 'File Name';
+    if (hintEl) hintEl.textContent = basePath ? `Path: ${basePath}/` : 'Path: /';
+    if (submitBtn) submitBtn.textContent = isDirectory ? 'Duplicate Folder' : 'Duplicate File';
+    if (inputEl) {
+        inputEl.value = defaultDuplicateName;
+        setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 0);
     }
+
+    showModal('duplicate-item-modal');
 }
 async function performDuplicate(sourcePath, targetPath, isDirectory) {
     try {
@@ -1600,7 +1644,7 @@ async function downloadFolder(folderPath) {
 function showModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         const firstInput = modal.querySelector('input');
         if (firstInput) setTimeout(() => firstInput.focus(), 100);
     }
@@ -1620,6 +1664,16 @@ function hideModal(modalId) {
 
         if (modalId === 'create-file-modal' || modalId === 'create-folder-modal') {
             contextMenuTargetFolder = null;
+        }
+        if (modalId === 'rename-item-modal') {
+            renameModalState = null;
+            const hintEl = document.getElementById('rename-item-hint');
+            if (hintEl) hintEl.textContent = '';
+        }
+        if (modalId === 'duplicate-item-modal') {
+            duplicateModalState = null;
+            const hintEl = document.getElementById('duplicate-item-hint');
+            if (hintEl) hintEl.textContent = '';
         }
     }
 }
@@ -1742,6 +1796,99 @@ function setupModalEvents() {
             } finally {
                 this.disabled = false;
                 this.textContent = 'Create Folder';
+            }
+        });
+    }
+    const renameItemClose = document.getElementById('rename-item-close');
+    const renameItemCancel = document.getElementById('rename-item-cancel');
+    const renameItemSubmit = document.getElementById('rename-item-submit');
+    const renameItemInput = document.getElementById('rename-item-name');
+    if (renameItemClose) renameItemClose.addEventListener('click', () => hideModal('rename-item-modal'));
+    if (renameItemCancel) renameItemCancel.addEventListener('click', () => hideModal('rename-item-modal'));
+    if (renameItemSubmit) {
+        renameItemSubmit.addEventListener('click', async function() {
+            if (!renameModalState) {
+                hideModal('rename-item-modal');
+                return;
+            }
+
+            const newName = renameItemInput ? renameItemInput.value.trim() : '';
+            if (!newName) {
+                alert('Please enter a name');
+                if (renameItemInput) renameItemInput.focus();
+                return;
+            }
+
+            if (newName === renameModalState.currentName) {
+                hideModal('rename-item-modal');
+                return;
+            }
+
+            const newPath = renameModalState.basePath ? `${renameModalState.basePath}/${newName}` : newName;
+
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Renaming...';
+
+            try {
+                await performRename(renameModalState.oldPath, newPath, renameModalState.isDirectory);
+                hideModal('rename-item-modal');
+            } finally {
+                this.disabled = false;
+                this.textContent = originalText;
+                renameModalState = null;
+            }
+        });
+    }
+    if (renameItemInput && renameItemSubmit) {
+        renameItemInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                renameItemSubmit.click();
+            }
+        });
+    }
+    const duplicateItemClose = document.getElementById('duplicate-item-close');
+    const duplicateItemCancel = document.getElementById('duplicate-item-cancel');
+    const duplicateItemSubmit = document.getElementById('duplicate-item-submit');
+    const duplicateItemInput = document.getElementById('duplicate-item-name');
+    if (duplicateItemClose) duplicateItemClose.addEventListener('click', () => hideModal('duplicate-item-modal'));
+    if (duplicateItemCancel) duplicateItemCancel.addEventListener('click', () => hideModal('duplicate-item-modal'));
+    if (duplicateItemSubmit) {
+        duplicateItemSubmit.addEventListener('click', async function() {
+            if (!duplicateModalState) {
+                hideModal('duplicate-item-modal');
+                return;
+            }
+
+            const newName = duplicateItemInput ? duplicateItemInput.value.trim() : '';
+            if (!newName) {
+                alert('Please enter a name');
+                if (duplicateItemInput) duplicateItemInput.focus();
+                return;
+            }
+
+            const targetPath = duplicateModalState.basePath ? `${duplicateModalState.basePath}/${newName}` : newName;
+
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Duplicating...';
+
+            try {
+                await performDuplicate(duplicateModalState.sourcePath, targetPath, duplicateModalState.isDirectory);
+                hideModal('duplicate-item-modal');
+            } finally {
+                this.disabled = false;
+                this.textContent = originalText;
+                duplicateModalState = null;
+            }
+        });
+    }
+    if (duplicateItemInput && duplicateItemSubmit) {
+        duplicateItemInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                duplicateItemSubmit.click();
             }
         });
     }
