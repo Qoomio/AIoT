@@ -15,6 +15,14 @@ REPO_URL="https://github.com/Qoomio/AIoT.git"
     echo "Starting deployment process..."
     echo "Timestamp: $(date)"
     
+    # STOP PM2 FIRST - before any file changes happen
+    # This prevents the watcher from seeing the file chaos during git pull
+    echo "Stopping pm2 process before update..."
+    pm2 stop aiot 2>/dev/null || true
+    
+    # Small delay to ensure all connections are closed
+    sleep 1
+    
     # Ensure git remote is set to the public repo
     echo "Configuring git remote..."
     git remote set-url origin "$REPO_URL" 2>/dev/null || git remote add origin "$REPO_URL"
@@ -35,8 +43,18 @@ REPO_URL="https://github.com/Qoomio/AIoT.git"
         echo "uv is already installed."
     fi
 
-    echo "Installing npm packages..."
-    npm i
+    # Skip npm install if packages haven't changed (significant speed improvement)
+    PACKAGE_HASH=$(cat package.json package-lock.json 2>/dev/null | md5sum | cut -d' ' -f1)
+    HASH_FILE="node_modules/.package-hash"
+    
+    if [ -d "node_modules" ] && [ -f "$HASH_FILE" ] && [ "$(cat $HASH_FILE 2>/dev/null)" = "$PACKAGE_HASH" ]; then
+        echo "Packages unchanged, skipping npm install ✓"
+    else
+        echo "Installing npm packages (this may take a while on first run)..."
+        # Use npm ci for faster installs when lock file exists, fall back to npm i
+        npm ci --prefer-offline 2>/dev/null || npm i
+        echo "$PACKAGE_HASH" > "$HASH_FILE"
+    fi
     
     # Delete existing pm2 process
     echo "Deleting existing pm2 process 'aiot'..."
