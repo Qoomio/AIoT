@@ -38,6 +38,37 @@
     gap: 4px;
 }
 
+.header-actions .btn-icon-spaced {
+    margin-right: 6px;
+}
+.header-actions .btn-icon-img {
+    width: 18px;
+    height: 18px;
+    display: block;
+    vertical-align: middle;
+}
+
+.header-actions .btn-icon-match-color {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background-color: currentColor;
+    mask-size: contain;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+}
+.header-actions .btn-icon-preview {
+    mask-image: url('/view/applets/editer/frontend/icons/preview.svg');
+    -webkit-mask-image: url('/view/applets/editer/frontend/icons/preview.svg');
+}
+.header-actions .btn-icon-chat {
+    mask-image: url('/view/applets/editer/frontend/icons/chat.svg');
+    -webkit-mask-image: url('/view/applets/editer/frontend/icons/chat.svg');
+}
+
 .header-actions .panel-toggle-btn {
     background: none;
     border: none;

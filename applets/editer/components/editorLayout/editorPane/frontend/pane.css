@@ -33,6 +33,15 @@
 	gap: 4px;
 	margin-left: 8px;
 }
+.tab-action-icon {
+	width: 16px;
+	height: 16px;
+	display: block;
+	vertical-align: middle;
+}
+.tab-action-icon-white {
+	filter: brightness(0) invert(1);
+}
 .tab-actions button {
 	background-color:#23272e;
 	border:none;

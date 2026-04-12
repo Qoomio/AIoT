@@ -666,6 +666,11 @@ async function showGitHubPublishModal(projectFolderPath) {
     newRepoNameInput.addEventListener("input", updatePublishState);
 
     publishButton.addEventListener("click", async () => {
+        if (publishButton.dataset.inflight === "1") {
+            return;
+        }
+        publishButton.dataset.inflight = "1";
+
         const selectedCard = modal.querySelector(".publisher-repo-card.is-selected");
         const option = selectedCard ? selectedCard.dataset.option : "existing";
         let repoName = projectName;
@@ -728,7 +733,8 @@ async function showGitHubPublishModal(projectFolderPath) {
             const payload = {
                 folder: projectFolderPath,
                 repoName: repoName,
-                commitMessage: "Published from Qoom"
+                commitMessage: "Published from Qoom",
+                overwrite: true
             };
             
             console.log("[Publisher] Publishing to GitHub:", payload);
@@ -736,9 +742,9 @@ async function showGitHubPublishModal(projectFolderPath) {
             
             updateProgressBar(progressModal, 20, "Uploading to GitHub...");
             
-            // 타임아웃 설정 (30초)
+            // Large projects can exceed 30s; avoid user retry while server is still processing.
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
             
             const response = await fetch("/edit/publisher/_api/publish/github", {
                 method: "POST",
@@ -766,16 +772,12 @@ async function showGitHubPublishModal(projectFolderPath) {
             if (data.success) {
                 const repoUrl = data.data?.repoUrl;
                 const pushedFiles = data.data?.pushedFiles || 0;
-                const failedFiles = data.data?.failedFiles || 0;
+                const commitSha = data.data?.commitSha;
                 
                 updateProgressBar(progressModal, 100, "Published!");
                 setTimeout(() => removeProgressModal(progressModal), 1000);
-                
-                if (failedFiles > 0) {
-                    showMessage(`Published with ${failedFiles} errors. ${pushedFiles} files uploaded.`, "warning");
-                } else {
-                    showMessage(`Published! ${pushedFiles} files uploaded`, "success");
-                }
+                const commitText = commitSha ? ` (commit ${commitSha.slice(0, 7)})` : "";
+                showMessage(`Published! ${pushedFiles} files uploaded${commitText}`, "success");
                 
                 if (repoUrl) {
                     window.open(repoUrl, "_blank");
@@ -790,12 +792,14 @@ async function showGitHubPublishModal(projectFolderPath) {
             removeProgressModal(progressModal);
             
             if (error.name === 'AbortError') {
-                showMessage("Upload timed out (30s). The server might still be processing. Check GitHub.", "error");
+                showMessage("Upload timed out (120s). The server might still be processing. Check GitHub before retrying.", "error");
             } else if (!navigator.onLine) {
                 showMessage("No internet connection", "error");
             } else {
                 showMessage(`Publish failed: ${error.message}`, "error");
             }
+        } finally {
+            publishButton.dataset.inflight = "0";
         }
     });
 

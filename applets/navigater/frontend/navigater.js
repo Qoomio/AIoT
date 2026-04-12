@@ -32,33 +32,43 @@ async function getEnvironment() {
     if (cachedEnv !== null) return cachedEnv;
     try {
         const res = await fetch('/navigater/env');
-        if (!res.ok) return 'development';
+        if (!res.ok) return 'user';
         const data = await res.json();
-        cachedEnv = data.env || 'development';
+        cachedEnv = data.env || 'user';
         return cachedEnv;
     } catch (err) {
         console.error('Failed to get environment info:', err);
-        return 'development';
+        return 'user';
     }
 }
 
+// Only these two rules; other nav buttons are left as-is (per ecosystem.config.cjs CHALLENGER_ROLE)
 function removeUnavailableButtons(headerElement, env) {
-    // student mode: remove Students button
     if (env === 'student') {
-        const studentsBtn = headerElement.querySelector('[data-applet="Students"]');
-        if (studentsBtn) {
-            studentsBtn.remove();
-            console.log('Removed Students button in student mode');
-        }
+        const btn = headerElement.querySelector('[data-applet="Students"]');
+        if (btn) btn.remove();
     }
-    
-    // teacher mode: remove Challenges button
     if (env === 'teacher') {
-        const challengesBtn = headerElement.querySelector('[data-applet="challenger"]');
-        if (challengesBtn) {
-            challengesBtn.remove();
-            console.log('Removed Challenges button in teacher mode');
+        const btn = headerElement.querySelector('[data-applet="challenger"]');
+        if (btn) btn.remove();
+    }
+}
+
+/**
+ * Update the Editer link in the navigater-header to point to the last editor URL
+ * so that open tabs are preserved when navigating back to the editor.
+ */
+function updateEditerLink() {
+    try {
+        const lastUrl = localStorage.getItem('editerLastUrl');
+        if (lastUrl && lastUrl.startsWith('/edit/')) {
+            const editerBtn = document.querySelector('.navigater-header [data-applet="editer"] a');
+            if (editerBtn) {
+                editerBtn.setAttribute('href', lastUrl);
+            }
         }
+    } catch (e) {
+        // Ignore localStorage errors
     }
 }
 
@@ -174,6 +184,9 @@ export async function inject(appletName) {
             }
             addEventListeners();
         }
+        // Restore the last editor URL so tabs are preserved when navigating back
+        updateEditerLink();
+
         document.querySelectorAll(`.navigater-header [data-applet]`).forEach(button => {
             button.classList.remove('active');
         });

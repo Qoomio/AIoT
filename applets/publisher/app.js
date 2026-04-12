@@ -10,62 +10,23 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import { fileURLToPath } from 'url';
-import mongoose from 'mongoose';
 
 // [체크] 이 경로에 파일이 실제로 있는지 확인해주세요.
 import { isValidFilePath, sanitizeFilePath, logActivity } from '../editer/utils/common.js';
+import { saveGitHubConfigRecord, getGitHubTokenRecord } from './db/github-config.repository.js';
+import {
+  submitCommunityPost,
+  listCommunityPosts,
+  updateCommunityPostStatus
+} from './db/community.repository.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// MongoDB configuration (Publisher)
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/qoom2';
-
-let mongoConnectPromise = null;
-
-async function connectPublisherDb() {
-  if (mongoose.connection.readyState === 1) return;
-  if (mongoConnectPromise) return mongoConnectPromise;
-  mongoConnectPromise = mongoose.connect(MONGODB_URI);
-  try {
-    return await mongoConnectPromise;
-  } catch (error) {
-    mongoConnectPromise = null;
-    throw error;
-  }
-}
-
-const gitHubConfigSchema = new mongoose.Schema(
-  {
-    key: { type: String, unique: true, default: 'default' },
-    token: { type: String, default: null },
-    username: { type: String, default: '' }
-  },
-  { timestamps: true, collection: 'publisher_github_configs' }
-);
-
-const communityPostSchema = new mongoose.Schema(
-  {
-    id: { type: String, index: true },
-    projectId: { type: String, index: true },
-    repoName: { type: String, index: true },
-    status: { type: String, default: 'SUBMITTED', index: true },
-    adminComments: [
-      {
-        action: String,
-        comment: String,
-        date: Date
-      }
-    ]
-  },
-  { timestamps: true, strict: false, collection: 'publisher_community_posts' }
-);
-
-const GitHubConfig =
-  mongoose.models.GitHubConfig || mongoose.model('GitHubConfig', gitHubConfigSchema);
-const CommunityPost =
-  mongoose.models.CommunityPost || mongoose.model('CommunityPost', communityPostSchema);
+const CONFIG_FILE_PATH = path.join(__dirname, '../data/github-config.json');
+const COMMUNITY_DB_PATH = path.join(__dirname, '../data/community_posts.json');
+const DEFAULT_REQUEST_TIMEOUT_MS = Number(process.env.PUBLISHER_REQUEST_TIMEOUT_MS || 15000);
 
 // --------------------------------------------------------------------------
 // [Phase 2] Stabilization Utilities (Retry Logic)
@@ -147,6 +108,7 @@ function makeHttpsRequest(url, options = {}) {
       method: options.method || 'GET',
       headers: options.headers || {}
     };
+    const timeoutMs = Number(options.timeoutMs || DEFAULT_REQUEST_TIMEOUT_MS);
 
     const req = httpModule.request(requestOptions, (res) => {
       let data = '';
@@ -172,6 +134,9 @@ function makeHttpsRequest(url, options = {}) {
     });
 
     req.on('error', reject);
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Request timeout after ${timeoutMs}ms`));
+    });
 
     if (options.body) {
       req.write(typeof options.body === 'string' ? options.body : JSON.stringify(options.body));
@@ -202,6 +167,7 @@ function makeFormDataRequest(url, options = {}) {
       method: options.method || 'POST',
       headers: formData.getHeaders()
     };
+    const timeoutMs = Number(options.timeoutMs || DEFAULT_REQUEST_TIMEOUT_MS);
 
     const req = httpModule.request(requestOptions, (res) => {
       let data = '';
@@ -227,6 +193,9 @@ function makeFormDataRequest(url, options = {}) {
     });
 
     req.on('error', reject);
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Request timeout after ${timeoutMs}ms`));
+    });
     formData.pipe(req);
   });
 }
@@ -295,6 +264,182 @@ async function uploadFileToGitHub(owner, repo, filePath, content, token, message
     // --- [기존 로직 끝] ---
 
   }, 3, 1000); // 3회 재시도, 초기 대기시간 1초
+}
+
+/**
+ * Get repository default branch
+ */
+async function getGitHubRepoDefaultBranch(owner, repo, token) {
+  const response = await makeHttpsRequest(`https://api.github.com/repos/${owner}/${repo}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'Qoom-Publisher'
+    }
+  });
+
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const error = typeof response.data === 'object' ? response.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to fetch repo info: ${response.statusCode}`);
+  }
+  return response.data?.default_branch || 'main';
+}
+
+/**
+ * Create a GitHub blob (base64)
+ */
+async function createGitHubBlob(owner, repo, token, content) {
+  const base64 = Buffer.isBuffer(content) ? content.toString('base64') : Buffer.from(content).toString('base64');
+  const response = await makeHttpsRequest(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'Qoom-Publisher'
+    },
+    body: JSON.stringify({
+      content: base64,
+      encoding: 'base64'
+    })
+  });
+
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const error = typeof response.data === 'object' ? response.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to create blob: ${response.statusCode}`);
+  }
+  return response.data?.sha;
+}
+
+/**
+ * Publish all files as a single commit.
+ * overwrite=true will replace the repo tree entirely with the provided files.
+ */
+async function publishFilesSingleCommit(owner, repo, files, token, message = 'Updated via Qoom', overwrite = true) {
+  const branch = await getGitHubRepoDefaultBranch(owner, repo, token);
+
+  const refResponse = await makeHttpsRequest(
+    `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Qoom-Publisher'
+      }
+    }
+  );
+
+  if (refResponse.statusCode < 200 || refResponse.statusCode >= 300) {
+    const error = typeof refResponse.data === 'object' ? refResponse.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to get ref: ${refResponse.statusCode}`);
+  }
+
+  const headSha = refResponse.data?.object?.sha;
+  if (!headSha) throw new Error('Failed to resolve branch HEAD');
+
+  const commitResponse = await makeHttpsRequest(
+    `https://api.github.com/repos/${owner}/${repo}/git/commits/${headSha}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Qoom-Publisher'
+      }
+    }
+  );
+
+  if (commitResponse.statusCode < 200 || commitResponse.statusCode >= 300) {
+    const error = typeof commitResponse.data === 'object' ? commitResponse.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to get commit: ${commitResponse.statusCode}`);
+  }
+
+  const baseTreeSha = commitResponse.data?.tree?.sha;
+
+  const treeEntries = [];
+  for (const file of files) {
+    const blobSha = await createGitHubBlob(owner, repo, token, file.content);
+    treeEntries.push({
+      path: file.path,
+      mode: '100644',
+      type: 'blob',
+      sha: blobSha
+    });
+  }
+
+  const treeResponse = await makeHttpsRequest(
+    `https://api.github.com/repos/${owner}/${repo}/git/trees`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Qoom-Publisher'
+      },
+      body: JSON.stringify({
+        base_tree: overwrite ? undefined : baseTreeSha,
+        tree: treeEntries
+      })
+    }
+  );
+
+  if (treeResponse.statusCode < 200 || treeResponse.statusCode >= 300) {
+    const error = typeof treeResponse.data === 'object' ? treeResponse.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to create tree: ${treeResponse.statusCode}`);
+  }
+
+  const newTreeSha = treeResponse.data?.sha;
+  if (!newTreeSha) throw new Error('Failed to create tree');
+
+  const newCommitResponse = await makeHttpsRequest(
+    `https://api.github.com/repos/${owner}/${repo}/git/commits`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Qoom-Publisher'
+      },
+      body: JSON.stringify({
+        message: message,
+        tree: newTreeSha,
+        parents: [headSha]
+      })
+    }
+  );
+
+  if (newCommitResponse.statusCode < 200 || newCommitResponse.statusCode >= 300) {
+    const error = typeof newCommitResponse.data === 'object' ? newCommitResponse.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to create commit: ${newCommitResponse.statusCode}`);
+  }
+
+  const newCommitSha = newCommitResponse.data?.sha;
+  if (!newCommitSha) throw new Error('Failed to create commit');
+
+  const updateRefResponse = await makeHttpsRequest(
+    `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Qoom-Publisher'
+      },
+      body: JSON.stringify({ sha: newCommitSha })
+    }
+  );
+
+  if (updateRefResponse.statusCode < 200 || updateRefResponse.statusCode >= 300) {
+    const error = typeof updateRefResponse.data === 'object' ? updateRefResponse.data : { message: 'Unknown error' };
+    throw new Error(error.message || `Failed to update ref: ${updateRefResponse.statusCode}`);
+  }
+
+  return { branch, commitSha: newCommitSha };
 }
 
 /**
@@ -371,37 +516,15 @@ async function callPublisherApi(endpoint, options = {}) {
  * 커뮤니티에 프로젝트 제출 (Create or Update)
  */
 async function submitToCommunity(postData) {
-  await connectPublisherDb();
+  return submitCommunityPost(COMMUNITY_DB_PATH, postData);
+}
 
-  const conditions = [];
-  if (postData?.projectId) conditions.push({ projectId: postData.projectId });
-  if (postData?.repoName) conditions.push({ repoName: postData.repoName });
-  if (postData?.id) conditions.push({ id: postData.id });
+async function saveCommunityDraft(postData) {
+  return submitCommunityPost(COMMUNITY_DB_PATH, postData, 'DRAFT');
+}
 
-  const query = conditions.length ? { $or: conditions } : null;
-  const existing = query ? await CommunityPost.findOne(query) : null;
-
-  if (existing) {
-    const updated = {
-      ...existing.toObject(),
-      ...postData,
-      status: 'SUBMITTED',
-      adminComments: existing.adminComments || []
-    };
-    const saved = await CommunityPost.findByIdAndUpdate(existing._id, updated, {
-      new: true
-    });
-    return saved?.toObject() || updated;
-  }
-
-  const newEntry = new CommunityPost({
-    ...postData,
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-    status: 'SUBMITTED',
-    adminComments: []
-  });
-  const saved = await newEntry.save();
-  return saved.toObject();
+async function submitCommunityDraft(postData) {
+  return submitCommunityPost(COMMUNITY_DB_PATH, postData, 'SUBMITTED');
 }
 
 /**
@@ -409,37 +532,18 @@ async function submitToCommunity(postData) {
  * @param {string} statusFilter - 'APPROVED', 'SUBMITTED' 등 (없으면 전체)
  */
 async function getCommunityProjects(statusFilter = null) {
-  await connectPublisherDb();
-  const filter = statusFilter ? { status: statusFilter } : {};
-  return CommunityPost.find(filter).sort({ createdAt: -1 }).lean();
+  return listCommunityPosts(COMMUNITY_DB_PATH, statusFilter);
+}
+
+async function getCommunityPublicProjects() {
+  return getCommunityProjects('APPROVED');
 }
 
 /**
  * 관리자 승인/거절 처리
  */
-async function updateCommunityStatus(id, status, adminComment = null) {
-  await connectPublisherDb();
-
-  const query = { $or: [{ id }, { projectId: id }] };
-  const update = { status };
-  const updateOps = { $set: update };
-
-  if (adminComment) {
-    updateOps.$push = {
-      adminComments: {
-        action: status,
-        comment: adminComment,
-        date: new Date()
-      }
-    };
-  }
-
-  const updated = await CommunityPost.findOneAndUpdate(query, updateOps, {
-    new: true
-  });
-
-  if (!updated) throw new Error('Project not found');
-  return updated.toObject();
+async function updateCommunityStatus(id, status, adminComment = null, adminInfo = null) {
+  return updateCommunityPostStatus(COMMUNITY_DB_PATH, id, status, adminComment, adminInfo);
 }
 
 async function publishToQoom(folder, projectData, mediaFiles = []) {
@@ -758,32 +862,14 @@ async function createGitHubRepository(token, repoName, isPrivate = false, descri
  * [수정됨] 디렉토리 생성 및 에러 처리 보강
  */
 async function saveGitHubConfig(token, username = '') {
-  try {
-    await connectPublisherDb();
-    const saved = await GitHubConfig.findOneAndUpdate(
-      { key: 'default' },
-      { token, username },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    return saved?.toObject() || { token, username };
-  } catch (error) {
-    console.error('[GitHub Config] Save Error:', error);
-    throw error;
-  }
+  return saveGitHubConfigRecord(CONFIG_FILE_PATH, token, username);
 }
 
 /**
  * Load GitHub configuration from local file
  */
 async function getGitHubToken() {
-  try {
-    await connectPublisherDb();
-    const config = await GitHubConfig.findOne({ key: 'default' }).lean();
-    return config?.token || null;
-  } catch (error) {
-    console.error('Failed to load GitHub config:', error);
-    return null;
-  }
+  return getGitHubTokenRecord(CONFIG_FILE_PATH);
 }
 
 // ==========================================
@@ -800,6 +886,7 @@ export {
   getQoomMediaFile,
   getAllFiles,
   uploadFileToGitHub,
+  publishFilesSingleCommit,
   callPublisherApi,
   getGitHubUser,
   getGitHubRepoList,
@@ -807,7 +894,10 @@ export {
   saveGitHubConfig,
   getGitHubToken,
   withRetry,
+  saveCommunityDraft,
+  submitCommunityDraft,
   submitToCommunity,
   getCommunityProjects,
+  getCommunityPublicProjects,
   updateCommunityStatus
 };

@@ -2,9 +2,13 @@
 <html>
 <head>
     <title>Markdown Viewer</title>
+    <!-- Import base.css first for font definitions -->
+    <link rel="stylesheet" href="/view/applets/shared/base.css">
+    <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
+    <!-- Local styles override base.css for markdown-specific layout -->
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Pretendard', 'Poppins', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
@@ -47,8 +51,11 @@
             background-color: #f2f2f2;
             font-weight: bold;
         }
+        .mermaid {
+            text-align: center;
+            margin: 1em 0;
+        }
     </style>
-    <link rel="stylesheet" href="/view/applets/renderer/frontend/refresh.css">
 </head>
 <body>
     <div class="refresh-indicator" id="refreshIndicator">Content updated</div>
@@ -56,8 +63,50 @@
     
     <!-- Use local standalone markdown-it library (same as VS Code) -->
     <script src="/view/applets/renderer/frontend/lib/markdown-it.min.js"></script>
+    <!-- Mermaid for diagram rendering -->
+    <script src="/view/applets/renderer/frontend/lib/mermaid.min.js"></script>
     <script type="module">
         import { initAutoRefresh } from '/view/applets/renderer/frontend/lib/auto-refresh.js';
+        
+        // Qoom theme variables based on applets/shared/base.css
+        const qoomThemeVariables = {
+            // Typography
+            fontFamily: "'Pretendard', 'Poppins', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+            // Primary colors (blue)
+            primaryColor: '#2563eb',
+            primaryTextColor: '#f8fafc',
+            primaryBorderColor: '#0a0f2c',
+            // Secondary colors (navy)
+            secondaryColor: '#111842',
+            secondaryTextColor: '#f8fafc',
+            secondaryBorderColor: '#0a0f2c',
+            // Tertiary colors (light gray)
+            tertiaryColor: '#f1f5f9',
+            tertiaryTextColor: '#0f172a',
+            tertiaryBorderColor: '#cbd5e1',
+            // Lines and text
+            lineColor: '#3a4580',
+            textColor: '#0f172a',
+            // Background
+            background: '#ffffff',
+            mainBkg: '#2563eb',
+            // Flowchart specific
+            nodeBorder: '#0a0f2c',
+            clusterBkg: '#dbeafe',
+            clusterBorder: '#2563eb',
+            // State colors
+            labelBackground: '#f8fafc',
+            // Special states
+            errorBkgColor: '#ef4444',
+            errorTextColor: '#f8fafc'
+        };
+        
+        // Initialize Mermaid with Qoom theme as default
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: qoomThemeVariables
+        });
         
         // Initialize markdown-it with GFM-like options
         const md = window.markdownit({
@@ -66,6 +115,23 @@
             linkify: true,     // Auto-convert URLs to links
             typographer: true  // Enable smart quotes and dashes
         });
+        
+        // Save the default fence renderer
+        const defaultFence = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
+            return self.renderToken(tokens, idx, options);
+        };
+        
+        // Custom fence renderer for mermaid blocks
+        md.renderer.rules.fence = function(tokens, idx, options, env, self) {
+            const token = tokens[idx];
+            if (token.info.trim() === 'mermaid') {
+                let content = token.content;
+                // Replace 'theme: qoom' with 'theme: base' since we use base with custom variables
+                content = content.replace(/theme:\s*qoom/g, 'theme: base');
+                return `<div class="mermaid">${content}</div>`;
+            }
+            return defaultFence(tokens, idx, options, env, self);
+        };
         
         function loadMarkdown() {
             if (typeof window.markdownit === 'undefined') {
@@ -86,6 +152,11 @@
                         // Normalize tabs to spaces for consistent table parsing
                         const normalizedText = text.replace(/\t/g, '    ');
                         document.getElementById('content').innerHTML = md.render(normalizedText);
+                        
+                        // Render any mermaid diagrams
+                        mermaid.run({
+                            querySelector: '.mermaid'
+                        });
                     } catch (parseError) {
                         throw new Error('Failed to parse markdown: ' + parseError.message);
                     }

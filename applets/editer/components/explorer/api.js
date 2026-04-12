@@ -8,7 +8,7 @@
  * - POST /_api/replace - Replace text in files
  */
 
-import { getDirectoryContents, createZipFromFolder } from './app.js';
+import { getDirectoryContents, createZipFromFolder, createZipFromPaths } from './app.js';
 import { logActivity, sendApiResponse } from '../../utils/common.js';
 import { isVideoExtension, isImageExtension } from '../../../shared/file-types-config.js';
 
@@ -110,8 +110,22 @@ const api = {
             return sendApiResponse(res, 400, false, null, 'Request body is required');
           }
           
-          const { path, type } = downloadData;
+          const { path, type, paths } = downloadData;
           
+          if (type === 'multiple' && Array.isArray(paths) && paths.length > 0) {
+            logActivity('explorer', 'download_request', { type: 'multiple', count: paths.length });
+            const zipBuffer = await createZipFromPaths(paths);
+            const filename = 'download.zip';
+            logActivity('explorer', 'download_success', { type: 'zip', size: zipBuffer.length });
+            res.writeHead(200, {
+              'Content-Type': 'application/zip',
+              'Content-Disposition': `attachment; filename="${filename}"`,
+              'Content-Length': zipBuffer.length
+            });
+            res.end(zipBuffer);
+            return;
+          }
+
           if (!path) {
             console.log('No path provided');
             return sendApiResponse(res, 400, false, null, 'Path is required');

@@ -60,6 +60,10 @@ class ExplorePanel {
         qoomEvent.emit('downloadFile', path);
     }
 
+    downloadMultiple(selection) {
+        qoomEvent.emit('downloadMultiple', { selection });
+    }
+
     duplicateDirectory(path) {
         qoomEvent.emit('duplicateDirectory', path)
     }

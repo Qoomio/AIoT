@@ -26,6 +26,44 @@ async function createZipFromFolder(folderPath) {
   });
 }
 
+async function createZipFromPaths(items, cwd = process.cwd()) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.on('data', chunk => chunks.push(chunk));
+    archive.on('end', () => resolve(Buffer.concat(chunks)));
+    archive.on('error', reject);
+
+    (async () => {
+      try {
+        for (const { path: itemPath, isDirectory } of items) {
+          const fullPath = path.isAbsolute(itemPath) ? itemPath : path.join(cwd, itemPath);
+          const nameInZip = path.normalize(itemPath);
+          if (!isDirectory) {
+            try {
+              await fs.promises.stat(fullPath);
+              archive.file(fullPath, { name: nameInZip });
+            } catch (e) {
+              console.warn('createZipFromPaths: skip missing file', fullPath, e.message);
+            }
+          } else {
+            try {
+              await fs.promises.stat(fullPath);
+              archive.directory(fullPath, nameInZip);
+            } catch (e) {
+              console.warn('createZipFromPaths: skip missing directory', fullPath, e.message);
+            }
+          }
+        }
+        archive.finalize();
+      } catch (err) {
+        reject(err);
+      }
+    })();
+  });
+}
+
 /**
  * Get directory contents for file explorer
  * @param {string} dirPath - The directory path to list
@@ -178,5 +216,6 @@ function matchesPattern(filePath, pattern) {
 export {
   getDirectoryContents,
   getAllFiles,
-  createZipFromFolder
+  createZipFromFolder,
+  createZipFromPaths
 };

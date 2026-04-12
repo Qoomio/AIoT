@@ -285,6 +285,14 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
     if (selectionCount > 1) {
         menuItems = [
             {
+                icon: '💾',
+                text: `Download ${selectionCount} Items`,
+                handler: () => {
+                    removeContextMenu();
+                    qoomEvent.emit('downloadMultiple', { selection });
+                }
+            },
+            {
                 icon: '🗑️',
                 text: `Delete ${selectionCount} Items`,
                 className: 'delete-item',

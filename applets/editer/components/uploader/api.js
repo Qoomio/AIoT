@@ -56,12 +56,7 @@ const api = {
           
         } catch (error) {
           logActivity('uploader', 'file_upload_error', { error: error.message });
-          
-          if (error.code === 'EEXIST') {
-            sendApiResponse(res, 409, false, null, 'File already exists');
-          } else {
-            sendApiResponse(res, 500, false, null, error.message);
-          }
+          sendApiResponse(res, 500, false, null, error.message);
         }
       }
     },

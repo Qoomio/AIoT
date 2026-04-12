@@ -13,6 +13,29 @@ import { isValidFilePath, sanitizeFilePath } from '../../utils/common.js';
 const uploadProgress = new Map();
 
 /**
+ * Get a unique file path when the original already exists
+ * e.g. /path/file.txt -> /path/file(1).txt, file(1).txt exists -> /path/file(2).txt
+ * @param {string} filePath - The desired file path
+ * @returns {string} - A path that does not yet exist
+ */
+function getUniqueFilePath(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return filePath;
+  }
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const baseName = path.basename(filePath, ext);
+  let counter = 1;
+  let newPath;
+  do {
+    const newFileName = `${baseName}(${counter})${ext}`;
+    newPath = path.join(dir, newFileName);
+    counter++;
+  } while (fs.existsSync(newPath));
+  return newPath;
+}
+
+/**
  * Handle single file upload
  * @param {string} fileName - The file name
  * @param {string} fileContent - The file content (base64 or text)
@@ -44,15 +67,12 @@ function handleFileUpload(fileName, fileContent, targetPath = '.') {
       return reject(new Error('Invalid file path: directory traversal not allowed'));
     }
     
-    // Check if file already exists
-    if (fs.existsSync(filePath)) {
-      const error = new Error('File already exists');
-      error.code = 'EEXIST';
-      return reject(error);
-    }
+    // If file already exists, use unique name with (1), (2), ... before extension
+    const actualFilePath = getUniqueFilePath(filePath);
+    const actualFileName = path.basename(actualFilePath);
     
     // Create target directory and any necessary subdirectories
-    const fileDir = path.dirname(filePath);
+    const fileDir = path.dirname(actualFilePath);
     if (!fs.existsSync(fileDir)) {
       try {
         fs.mkdirSync(fileDir, { recursive: true });
@@ -60,6 +80,8 @@ function handleFileUpload(fileName, fileContent, targetPath = '.') {
         return reject(new Error(`Failed to create directory: ${mkdirError.message}`));
       }
     }
+    
+    const filePathToWrite = actualFilePath;
     
     // Process file content (handle base64 encoding)
     let processedContent;
@@ -75,18 +97,18 @@ function handleFileUpload(fileName, fileContent, targetPath = '.') {
     }
     
     // Write file
-    fs.writeFile(filePath, processedContent, (err) => {
+    fs.writeFile(filePathToWrite, processedContent, (err) => {
       if (err) {
         reject(err);
       } else {
         // Get file stats
-        fs.stat(filePath, (statErr, stats) => {
+        fs.stat(filePathToWrite, (statErr, stats) => {
           if (statErr) {
             reject(statErr);
           } else {
             resolve({
-              fileName: fileName,
-              filePath: filePath,
+              fileName: actualFileName,
+              filePath: filePathToWrite,
               size: stats.size,
               uploaded: stats.birthtime
             });

@@ -82,7 +82,7 @@ function setupMonacoEnvironment() {
 function getInitialState() {
     const currentPath = window.location.pathname;
 
-    const filePath = currentPath.substring(6);
+    let filePath = currentPath.substring(6);
     if (!filePath || filePath === "") {
         throw new Error('Cannot parse current path from url');
     }
@@ -112,7 +112,28 @@ function getInitialState() {
         },
     }
 
-    const searchParams = window.location.search;
+    let searchParams = window.location.search;
+
+    // If no URL query params, try to restore from localStorage
+    if (!searchParams) {
+        try {
+            const lastUrl = localStorage.getItem('editerLastUrl');
+            if (lastUrl && lastUrl.startsWith('/edit/') && lastUrl.includes('?')) {
+                // Update the browser URL to the saved state (no page reload)
+                window.history.replaceState(null, "", lastUrl);
+                // Re-read the updated path and search params
+                const savedFilePath = window.location.pathname.substring(6);
+                if (savedFilePath && savedFilePath !== "") {
+                    filePath = savedFilePath;
+                    state.layout.activeFilePath = savedFilePath;
+                }
+                searchParams = window.location.search;
+            }
+        } catch (e) {
+            // Ignore localStorage errors
+        }
+    }
+
     if (!searchParams) {
         return state;
     }
@@ -200,6 +221,13 @@ function updateUrl() {
 
     if (window.location.pathname + window.location.search !== newUrl) {
         window.history.replaceState(null, "", newUrl);
+    }
+
+    // Save the current editor URL to localStorage so navigater can restore it
+    try {
+        localStorage.setItem('editerLastUrl', newUrl);
+    } catch (e) {
+        // Ignore localStorage errors
     }
 }
 

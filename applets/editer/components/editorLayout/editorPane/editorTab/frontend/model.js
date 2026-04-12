@@ -17,6 +17,7 @@ class EditorTab {
     #isUpdating = null;
     #isTooLarge = false;
     #fileSize = null;
+    #lastSavedContent = null;
 
     get active() { return this.#active }
     get content() {
@@ -36,6 +37,9 @@ class EditorTab {
     }
     get isBinary() {
         const ext = '.' + this.fileExtension;
+        
+        // SVG is text-based (XML) and should be editable
+        if (ext === '.svg') return false;
         
         // Get all binary extensions from config
         const binaryExtensions = [
@@ -220,6 +224,7 @@ class EditorTab {
             }
 
             const result = await response.json();
+            this.#lastSavedContent = contentToSave;
             this.modified = false;
         } catch (error) {
             console.error("Error saving file:", error);
@@ -227,6 +232,14 @@ class EditorTab {
         } finally {
             this.isSaving = false;
         }
+    }
+
+    isOwnSaveEcho(content) {
+        return this.#lastSavedContent !== null && this.#lastSavedContent === content;
+    }
+
+    clearLastSavedContent() {
+        this.#lastSavedContent = null;
     }
 
     updateFilePath(newPath) {

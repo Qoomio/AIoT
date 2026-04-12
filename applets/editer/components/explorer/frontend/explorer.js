@@ -147,36 +147,16 @@ function getFileIconClass(fileName, isDirectory) {
 function switchTab(tabName) {
     const explorerView = document.getElementById('explorer-view');
     const searchView = document.getElementById('explorer-search-view');
-    const explorerActions = document.querySelectorAll('.explorer-tab-only');
     const searchBtn = document.getElementById('explorer-search-btn');
-    const explorerTitle = document.querySelector('.explorer-title');
 
     if (tabName === 'explorer') {
         explorerView.classList.add('active');
         searchView.classList.remove('active');
-        explorerActions.forEach(btn => {
-            if (btn.dataset.tab === 'explorer') {
-                btn.style.display = 'block';
-            }
-        });
         if (searchBtn) searchBtn.classList.remove('active');
-        if (explorerTitle) {
-            explorerTitle.textContent = 'Explorer';
-            explorerTitle.style.fontWeight = '600';
-        }
     } else if (tabName === 'search') {
         explorerView.classList.remove('active');
         searchView.classList.add('active');
-        explorerActions.forEach(btn => {
-            if (btn.dataset.tab === 'explorer') {
-                btn.style.display = 'none';
-            }
-        });
         if (searchBtn) searchBtn.classList.add('active');
-        if (explorerTitle) {
-            explorerTitle.textContent = 'Search';
-            explorerTitle.style.fontWeight = '600';
-        }
         // Initialize search tab if not already initialized
         const searchContainer = searchView.querySelector('.search-tab-container');
         if (searchContainer && !searchContainer.hasAttribute('data-initialized')) {
@@ -188,23 +168,17 @@ function switchTab(tabName) {
 }
 
 function setupTabToggle() {
-    // Setup search button in explorer-actions
+    // Setup search button in explorer-actions - toggle behavior
     const searchBtn = document.getElementById('explorer-search-btn');
     if (searchBtn) {
         searchBtn.addEventListener('click', () => {
-            switchTab('search');
-        });
-    }
-    
-    // Setup toggle back to explorer (click on title or when needed)
-    const explorerTitle = document.querySelector('.explorer-title');
-    if (explorerTitle) {
-        explorerTitle.addEventListener('click', () => {
+            // Toggle between explorer and search
             if (currentTab === 'search') {
                 switchTab('explorer');
+            } else {
+                switchTab('search');
             }
         });
-        explorerTitle.style.cursor = 'pointer';
     }
 }
 
@@ -1639,6 +1613,38 @@ async function downloadFolder(folderPath) {
     }
 }
 
+async function downloadMultiple(selection) {
+    if (!selection || selection.length === 0) return;
+    try {
+        showMessage(`Preparing download of ${selection.length} items...`, 'info');
+        const response = await fetch('/editer/explorer/_api/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'multiple',
+                paths: selection
+            })
+        });
+        if (!response.ok) {
+            throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'download.zip';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        showMessage(`Download completed (${selection.length} items)`, 'success');
+    } catch (error) {
+        console.error('Multiple download error:', error);
+        showMessage('Failed to download: ' + error.message, 'error');
+    }
+}
+
 // --- Modal and header events ---
 
 function showModal(modalId) {
@@ -1905,11 +1911,7 @@ function setupModalEvents() {
     });
 }
 function setupHeaderButtons() {
-    const newFileBtn = document.querySelector('.new-file-btn');
-    const newFolderBtn = document.querySelector('.new-folder-btn');
     const refreshBtn = document.querySelector('.refresh-btn');
-    if (newFileBtn) newFileBtn.addEventListener('click', () => showModal('create-file-modal'));
-    if (newFolderBtn) newFolderBtn.addEventListener('click', () => showModal('create-folder-modal'));
     if (refreshBtn) refreshBtn.addEventListener('click', () => refreshFileTree());
 }
 function setupUploadButtons() {
@@ -2070,6 +2072,11 @@ function setupExplorerContextMenuEvents() {
     qoomEvent.on('deleteMultiple', (e) => {
         const { selection } = e.detail;
         confirmDeleteMultiple(selection);
+    });
+
+    qoomEvent.on('downloadMultiple', (e) => {
+        const { selection } = e.detail;
+        downloadMultiple(selection);
     });
 
     qoomEvent.on('uploadFolder', (e) => {

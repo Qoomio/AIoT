@@ -20,6 +20,7 @@ const dom = {
 
 let state;
 const foldState = {}; //paneId -> boolean
+const viewStateMap = new Map(); // filePath -> Monaco viewState (scroll position, cursor, etc.)
 
 function handleTabContentLoaded(e) {
     const tab = e.detail;
@@ -65,6 +66,17 @@ function toggleCodeFold(paneId) {
   );
 
   foldState[paneId] = !isFolded;
+  updateCodeFoldIcon(paneId);
+}
+
+function updateCodeFoldIcon(paneId) {
+  const $button = dom.buttons.codeFold[paneId];
+  if (!$button) return;
+  const img = $button.querySelector('img');
+  if (!img) return;
+  const isFolded = foldState[paneId] ?? false;
+  const base = '/view/applets/editer/frontend/icons/';
+  img.src = isFolded ? base + 'code_folded.svg' : base + 'code_fold.svg';
 }
 
 
@@ -169,12 +181,38 @@ function render(tab) {
         if (pane.mode === 'editor') {
             const model = tab.model;
             if (model) {
+                // 0. Save current viewState (scroll position, cursor, etc.) before switching
+                const currentModel = $pane.editor.getModel();
+                if (currentModel) {
+                    const currentFilePath = currentModel.uri?.path || currentModel.uri?.toString();
+                    if (currentFilePath) {
+                        viewStateMap.set(currentFilePath, $pane.editor.saveViewState());
+                    }
+                }
+
                 // 1. Determine language based on file extension
                 const ext = tab.filePath.split('.').pop().toLowerCase();
                 const langMap = {
                     'html': 'html', 'htm': 'html',
                     'css': 'css',
-                    'js': 'javascript', 'py': 'python', 'json': 'json'
+                    'js': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript',
+                    'ts': 'typescript', 'tsx': 'typescript',
+                    'py': 'python',
+                    'json': 'json', 'jsonl': 'json',
+                    'md': 'markdown', 'markdown': 'markdown',
+                    'xml': 'xml', 'svg': 'xml',
+                    'yaml': 'yaml', 'yml': 'yaml',
+                    'sh': 'shell', 'bash': 'shell',
+                    'sql': 'sql',
+                    'java': 'java',
+                    'c': 'c', 'cpp': 'cpp', 'h': 'cpp',
+                    'go': 'go',
+                    'rs': 'rust',
+                    'php': 'php',
+                    'rb': 'ruby',
+                    'swift': 'swift',
+                    'kt': 'kotlin',
+                    'r': 'r'
                 };
                 const language = langMap[ext] || 'plaintext';
 
@@ -185,6 +223,12 @@ function render(tab) {
 
                 // 3. [Add] Actually bind the model to the editor (required for rendering)
                 $pane.editor.setModel(model);
+
+                // 4. Restore viewState (scroll position, cursor, etc.) for the new tab
+                const newFilePath = model.uri?.path || model.uri?.toString();
+                if (newFilePath && viewStateMap.has(newFilePath)) {
+                    $pane.editor.restoreViewState(viewStateMap.get(newFilePath));
+                }
             }
         } 
         

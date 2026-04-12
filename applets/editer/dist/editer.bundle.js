@@ -95,7 +95,7 @@ var __yieldStar = (value) => {
   }, "return" in obj && method("return"), it;
 };
 var __forAwait = (obj, it, method) => (it = obj[__knownSymbol("asyncIterator")]) ? it.call(obj) : (obj = obj[__knownSymbol("iterator")](), it = {}, method = (key, fn) => (fn = obj[key]) && (it[key] = (arg) => new Promise((yes, no, done) => (arg = fn.call(obj, arg), done = arg.done, Promise.resolve(arg.value).then((value) => yes({ value, done }), no)))), method("next"), method("return"), it);
-var _emitDebounceTimers, _collapsed, _width, _active, _deleted, _error, _filePath, _id, _modified, _model, _paneId, _isActivelyUsed, _isLoading, _isSaving, _isUpdating, _isTooLarge, _fileSize, _active2, _id2, _tabs, _layout, _layouts, _panes, _collapsed2, _width2, _collapsed3, _width3, _event, _chat, _context, _controlBar, _explorer, _history, _layout2, _monacoSettings, _notificationBar, _preview, _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$2, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua;
+var _emitDebounceTimers, _collapsed, _width, _active, _deleted, _error, _filePath, _id, _modified, _model, _paneId, _isActivelyUsed, _isLoading, _isSaving, _isUpdating, _isTooLarge, _fileSize, _lastSavedContent, _active2, _id2, _tabs, _layout, _layouts, _panes, _collapsed2, _width2, _collapsed3, _width3, _event, _chat, _context, _controlBar, _explorer, _history, _layout2, _monacoSettings, _notificationBar, _preview, _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$2, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua;
 import { marked } from "/view/applets/shared/marked.esm.js";
 import { FILE_TYPES_CONFIG as FILE_TYPES_CONFIG$1, evaluateCondition } from "/view/applets/shared/file-types-config.js";
 function isInIframe() {
@@ -121,30 +121,36 @@ function getEnvironment() {
     if (cachedEnv !== null) return cachedEnv;
     try {
       const res = yield fetch("/navigater/env");
-      if (!res.ok) return "development";
+      if (!res.ok) return "user";
       const data = yield res.json();
-      cachedEnv = data.env || "development";
+      cachedEnv = data.env || "user";
       return cachedEnv;
     } catch (err) {
       console.error("Failed to get environment info:", err);
-      return "development";
+      return "user";
     }
   });
 }
 function removeUnavailableButtons(headerElement, env2) {
   if (env2 === "student") {
-    const studentsBtn = headerElement.querySelector('[data-applet="Students"]');
-    if (studentsBtn) {
-      studentsBtn.remove();
-      console.log("Removed Students button in student mode");
-    }
+    const btn = headerElement.querySelector('[data-applet="Students"]');
+    if (btn) btn.remove();
   }
   if (env2 === "teacher") {
-    const challengesBtn = headerElement.querySelector('[data-applet="challenger"]');
-    if (challengesBtn) {
-      challengesBtn.remove();
-      console.log("Removed Challenges button in teacher mode");
+    const btn = headerElement.querySelector('[data-applet="challenger"]');
+    if (btn) btn.remove();
+  }
+}
+function updateEditerLink() {
+  try {
+    const lastUrl = localStorage.getItem("editerLastUrl");
+    if (lastUrl && lastUrl.startsWith("/edit/")) {
+      const editerBtn = document.querySelector('.navigater-header [data-applet="editer"] a');
+      if (editerBtn) {
+        editerBtn.setAttribute("href", lastUrl);
+      }
     }
+  } catch (e) {
   }
 }
 function addEventListeners$2() {
@@ -239,6 +245,7 @@ function inject(appletName) {
         }
         addEventListeners$2();
       }
+      updateEditerLink();
       document.querySelectorAll(`.navigater-header [data-applet]`).forEach((button) => {
         button.classList.remove("active");
       });
@@ -504,6 +511,7 @@ class EditorTab {
     __privateAdd(this, _isUpdating, null);
     __privateAdd(this, _isTooLarge, false);
     __privateAdd(this, _fileSize, null);
+    __privateAdd(this, _lastSavedContent, null);
     const { filePath, active = false, id, paneId } = state2;
     if (!filePath) throw new Error("No filePath provided");
     __privateSet(this, _active, active);
@@ -550,6 +558,7 @@ class EditorTab {
   }
   get isBinary() {
     const ext = "." + this.fileExtension;
+    if (ext === ".svg") return false;
     const binaryExtensions = [
       ...getVideoExtensions(),
       ...getImageExtensions(),
@@ -707,6 +716,7 @@ class EditorTab {
           throw new Error(error.message || "Save failed");
         }
         const result = yield response.json();
+        __privateSet(this, _lastSavedContent, contentToSave);
         this.modified = false;
       } catch (error) {
         console.error("Error saving file:", error);
@@ -714,6 +724,12 @@ class EditorTab {
         this.isSaving = false;
       }
     });
+  }
+  isOwnSaveEcho(content) {
+    return __privateGet(this, _lastSavedContent) !== null && __privateGet(this, _lastSavedContent) === content;
+  }
+  clearLastSavedContent() {
+    __privateSet(this, _lastSavedContent, null);
   }
   updateFilePath(newPath) {
     if (!newPath || newPath === __privateGet(this, _filePath)) return;
@@ -763,6 +779,7 @@ _isSaving = new WeakMap();
 _isUpdating = new WeakMap();
 _isTooLarge = new WeakMap();
 _fileSize = new WeakMap();
+_lastSavedContent = new WeakMap();
 class EditorPane {
   constructor(state2) {
     __privateAdd(this, _active2, false);
@@ -1074,6 +1091,9 @@ class ExplorePanel {
   }
   downloadFile(path) {
     qoomEvent$1.emit("downloadFile", path);
+  }
+  downloadMultiple(selection) {
+    qoomEvent$1.emit("downloadMultiple", { selection });
   }
   duplicateDirectory(path) {
     qoomEvent$1.emit("duplicateDirectory", path);
@@ -20437,6 +20457,16 @@ const SelectAllCommand = registerCommand$3(new MultiCommand({
     group: "",
     title: localize("selectAll", "Select All"),
     order: 1
+  }, {
+    menuId: MenuId.EditorContext,
+    group: "9_cutcopypaste",
+    title: localize("selectAll", "Select All"),
+    order: 5
+  }, {
+    menuId: MenuId.SimpleEditorContext,
+    group: "9_cutcopypaste",
+    title: localize("selectAll", "Select All"),
+    order: 5
   }]
 }));
 const DEFAULT_CHANNEL = "default";
@@ -86648,6 +86678,7 @@ class TextAreaWrapper extends Disposable {
     }
   }
 }
+const LONG_PRESS_DELAY_MS = 1e3;
 class PointerEventHandler extends MouseHandler {
   constructor(context, viewController, viewHelper) {
     super(context, viewController, viewHelper);
@@ -86655,7 +86686,12 @@ class PointerEventHandler extends MouseHandler {
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Tap, (e) => this.onTap(e)));
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Change, (e) => this.onChange(e)));
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Contextmenu, (e) => this._onContextMenu(new EditorMouseEvent(e, false, this.viewHelper.viewDomNode), false)));
+    this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Start, (e) => this._onGestureStart(e)));
+    this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.End, (e) => this._onGestureEnd(e)));
     this._lastPointerType = "mouse";
+    this._touchSelectionMode = false;
+    this._longPressTimer = null;
+    this._touchStartEvent = null;
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, "pointerdown", (e) => {
       const pointerType = e.pointerType;
       if (pointerType === "mouse") {
@@ -86673,6 +86709,47 @@ class PointerEventHandler extends MouseHandler {
     this._register(pointerEvents.onPointerLeave(this.viewHelper.viewDomNode, (e) => this._onMouseLeave(e)));
     this._register(pointerEvents.onPointerDown(this.viewHelper.viewDomNode, (e, pointerId) => this._onMouseDown(e, pointerId)));
   }
+  _onGestureStart(event) {
+    this._clearLongPressTimer();
+    this._touchSelectionMode = false;
+    this._touchStartEvent = event;
+    this._longPressTimer = setTimeout(() => {
+      this._longPressTimer = null;
+      if (!this._touchStartEvent || !this.viewHelper.linesContentDomNode.contains(this._touchStartEvent.initialTarget)) {
+        return;
+      }
+      this._touchSelectionMode = true;
+      this.viewHelper.focusTextArea();
+      const startEventForPosition = {
+        pageX: this._touchStartEvent.pageX,
+        pageY: this._touchStartEvent.pageY,
+        target: this._touchStartEvent.initialTarget,
+        button: 0,
+        buttons: 0,
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        detail: 1
+      };
+      this._dispatchGesture(
+        startEventForPosition,
+        /*inSelectionMode*/
+        false
+      );
+    }, LONG_PRESS_DELAY_MS);
+  }
+  _onGestureEnd(_event2) {
+    this._clearLongPressTimer();
+    this._touchSelectionMode = false;
+    this._touchStartEvent = null;
+  }
+  _clearLongPressTimer() {
+    if (this._longPressTimer !== null) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+    }
+  }
   onTap(event) {
     if (!event.initialTarget || !this.viewHelper.linesContentDomNode.contains(event.initialTarget)) {
       return;
@@ -86687,7 +86764,15 @@ class PointerEventHandler extends MouseHandler {
   }
   onChange(event) {
     if (this._lastPointerType === "touch") {
-      this._context.viewModel.viewLayout.deltaScrollNow(-event.translationX, -event.translationY);
+      if (this._touchSelectionMode) {
+        this._dispatchGesture(
+          event,
+          /*inSelectionMode*/
+          true
+        );
+      } else {
+        this._context.viewModel.viewLayout.deltaScrollNow(-event.translationX, -event.translationY);
+      }
     }
     if (this._lastPointerType === "pen") {
       this._dispatchGesture(
@@ -86731,6 +86816,68 @@ class TouchHandler extends MouseHandler {
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Tap, (e) => this.onTap(e)));
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Change, (e) => this.onChange(e)));
     this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Contextmenu, (e) => this._onContextMenu(new EditorMouseEvent(e, false, this.viewHelper.viewDomNode), false)));
+    this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Start, (e) => this._onGestureStart(e)));
+    this._register(addDisposableListener(this.viewHelper.linesContentDomNode, EventType.End, (e) => this._onGestureEnd(e)));
+    this._touchSelectionMode = false;
+    this._longPressTimer = null;
+    this._touchStartEvent = null;
+  }
+  _onGestureStart(event) {
+    this._clearLongPressTimer();
+    this._touchSelectionMode = false;
+    this._touchStartEvent = event;
+    this._longPressTimer = setTimeout(() => {
+      this._longPressTimer = null;
+      if (!this._touchStartEvent || !this.viewHelper.linesContentDomNode.contains(this._touchStartEvent.initialTarget)) {
+        return;
+      }
+      this._touchSelectionMode = true;
+      this.viewHelper.focusTextArea();
+      const startEventForPosition = {
+        pageX: this._touchStartEvent.pageX,
+        pageY: this._touchStartEvent.pageY,
+        target: this._touchStartEvent.initialTarget,
+        button: 0,
+        buttons: 0,
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        detail: 1
+      };
+      this._dispatchGesture(startEventForPosition, false);
+    }, LONG_PRESS_DELAY_MS);
+  }
+  _onGestureEnd(_event2) {
+    this._clearLongPressTimer();
+    this._touchSelectionMode = false;
+    this._touchStartEvent = null;
+  }
+  _clearLongPressTimer() {
+    if (this._longPressTimer !== null) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+    }
+  }
+  _dispatchGesture(event, inSelectionMode) {
+    const target = this._createMouseTarget(new EditorMouseEvent(event, false, this.viewHelper.viewDomNode), false);
+    if (target.position) {
+      this.viewController.dispatchMouse({
+        position: target.position,
+        mouseColumn: target.position.column,
+        startedOnLineNumbers: false,
+        revealType: 1,
+        mouseDownCount: event.tapCount || 1,
+        inSelectionMode,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        leftButton: false,
+        middleButton: false,
+        onInjectedText: target.type === 6 && target.detail.injectedText !== null
+      });
+    }
   }
   onTap(event) {
     event.preventDefault();
@@ -86748,7 +86895,11 @@ class TouchHandler extends MouseHandler {
     }
   }
   onChange(e) {
-    this._context.viewModel.viewLayout.deltaScrollNow(-e.translationX, -e.translationY);
+    if (this._touchSelectionMode) {
+      this._dispatchGesture(e, true);
+    } else {
+      this._context.viewModel.viewLayout.deltaScrollNow(-e.translationX, -e.translationY);
+    }
   }
 }
 class PointerHandler extends Disposable {
@@ -170849,6 +171000,14 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
   if (selectionCount > 1) {
     menuItems = [
       {
+        icon: "💾",
+        text: `Download ${selectionCount} Items`,
+        handler: () => {
+          removeContextMenu();
+          qoomEvent$1.emit("downloadMultiple", { selection });
+        }
+      },
+      {
         icon: "🗑️",
         text: `Delete ${selectionCount} Items`,
         className: "delete-item",
@@ -171815,6 +171974,7 @@ const dom$1 = {
 };
 let state$3;
 const foldState = {};
+const viewStateMap = /* @__PURE__ */ new Map();
 function handleTabContentLoaded(e) {
   const tab = e.detail;
   const $pane = dom$1.panes[tab.paneId];
@@ -171851,6 +172011,17 @@ function toggleCodeFold(paneId) {
     null
   );
   foldState[paneId] = !isFolded;
+  updateCodeFoldIcon(paneId);
+}
+function updateCodeFoldIcon(paneId) {
+  var _a3;
+  const $button = dom$1.buttons.codeFold[paneId];
+  if (!$button) return;
+  const img = $button.querySelector("img");
+  if (!img) return;
+  const isFolded = (_a3 = foldState[paneId]) != null ? _a3 : false;
+  const base = "/view/applets/editer/frontend/icons/";
+  img.src = isFolded ? base + "code_folded.svg" : base + "code_fold.svg";
 }
 function beautify(paneId) {
   const $pane = dom$1.panes[paneId];
@@ -171886,6 +172057,7 @@ function initializeSearchTab($container) {
   });
 }
 function render(tab) {
+  var _a3, _b3, _c2, _d2;
   const $pane = dom$1.panes[tab.paneId];
   if (!$pane) return;
   const pane = state$3.layout.panes.find((pane2) => pane2.id === tab.paneId);
@@ -171930,20 +172102,56 @@ function render(tab) {
     if (pane.mode === "editor") {
       const model = tab.model;
       if (model) {
+        const currentModel = $pane.editor.getModel();
+        if (currentModel) {
+          const currentFilePath = ((_a3 = currentModel.uri) == null ? void 0 : _a3.path) || ((_b3 = currentModel.uri) == null ? void 0 : _b3.toString());
+          if (currentFilePath) {
+            viewStateMap.set(currentFilePath, $pane.editor.saveViewState());
+          }
+        }
         const ext = tab.filePath.split(".").pop().toLowerCase();
         const langMap = {
           "html": "html",
           "htm": "html",
           "css": "css",
           "js": "javascript",
+          "mjs": "javascript",
+          "cjs": "javascript",
+          "ts": "typescript",
+          "tsx": "typescript",
           "py": "python",
-          "json": "json"
+          "json": "json",
+          "jsonl": "json",
+          "md": "markdown",
+          "markdown": "markdown",
+          "xml": "xml",
+          "svg": "xml",
+          "yaml": "yaml",
+          "yml": "yaml",
+          "sh": "shell",
+          "bash": "shell",
+          "sql": "sql",
+          "java": "java",
+          "c": "c",
+          "cpp": "cpp",
+          "h": "cpp",
+          "go": "go",
+          "rs": "rust",
+          "php": "php",
+          "rb": "ruby",
+          "swift": "swift",
+          "kt": "kotlin",
+          "r": "r"
         };
         const language2 = langMap[ext] || "plaintext";
         if (model.getLanguageId() !== language2) {
           window.monaco.editor.setModelLanguage(model, language2);
         }
         $pane.editor.setModel(model);
+        const newFilePath = ((_c2 = model.uri) == null ? void 0 : _c2.path) || ((_d2 = model.uri) == null ? void 0 : _d2.toString());
+        if (newFilePath && viewStateMap.has(newFilePath)) {
+          $pane.editor.restoreViewState(viewStateMap.get(newFilePath));
+        }
       }
     }
     if (pane.mode === "renderer") {
@@ -172369,26 +172577,38 @@ function handleSyncMessage(message) {
           var _a3;
           const normalizedTabPath = normalizePath(tab.filePath);
           const normalizedEventPath = normalizePath(filePath);
-          if (normalizedTabPath === normalizedEventPath && !tab.modified) {
-            console.log("[SYNC] Updating content for:", tab.filePath);
-            const $pane = document.querySelector(`.editor-pane[data-pane="${paneIndex}"]`);
-            const editor2 = $pane == null ? void 0 : $pane.editor;
-            let position = null;
-            let selection = null;
-            if (editor2 && ((_a3 = pane.activeTab) == null ? void 0 : _a3.id) === tab.id) {
-              position = editor2.getPosition();
-              selection = editor2.getSelection();
-            }
-            tab.content = content;
-            if (editor2 && position) {
-              try {
-                editor2.setPosition(position);
-                if (selection) {
-                  editor2.setSelection(selection);
-                }
-              } catch (e) {
-                console.log("[SYNC] Could not restore cursor position:", e);
+          if (normalizedTabPath !== normalizedEventPath) return;
+          if (tab.isOwnSaveEcho && tab.isOwnSaveEcho(content)) {
+            console.log("[SYNC] Skipping own save echo for:", tab.filePath);
+            tab.clearLastSavedContent();
+            return;
+          }
+          if (tab.modified) {
+            console.log("[SYNC] Skipping update, local modifications for:", tab.filePath);
+            return;
+          }
+          if (tab.content === content) {
+            console.log("[SYNC] Skipping update, content identical for:", tab.filePath);
+            return;
+          }
+          console.log("[SYNC] Updating content for:", tab.filePath);
+          const $pane = document.querySelector(`.editor-pane[data-pane="${paneIndex}"]`);
+          const editor2 = $pane == null ? void 0 : $pane.editor;
+          let position = null;
+          let selection = null;
+          if (editor2 && ((_a3 = pane.activeTab) == null ? void 0 : _a3.id) === tab.id) {
+            position = editor2.getPosition();
+            selection = editor2.getSelection();
+          }
+          tab.content = content;
+          if (editor2 && position) {
+            try {
+              editor2.setPosition(position);
+              if (selection) {
+                editor2.setSelection(selection);
               }
+            } catch (e) {
+              console.log("[SYNC] Could not restore cursor position:", e);
             }
           }
         });
@@ -172909,35 +173129,15 @@ function getFileIconClass(fileName, isDirectory) {
 function switchTab(tabName) {
   const explorerView = document.getElementById("explorer-view");
   const searchView = document.getElementById("explorer-search-view");
-  const explorerActions = document.querySelectorAll(".explorer-tab-only");
   const searchBtn = document.getElementById("explorer-search-btn");
-  const explorerTitle = document.querySelector(".explorer-title");
   if (tabName === "explorer") {
     explorerView.classList.add("active");
     searchView.classList.remove("active");
-    explorerActions.forEach((btn) => {
-      if (btn.dataset.tab === "explorer") {
-        btn.style.display = "block";
-      }
-    });
     if (searchBtn) searchBtn.classList.remove("active");
-    if (explorerTitle) {
-      explorerTitle.textContent = "Explorer";
-      explorerTitle.style.fontWeight = "600";
-    }
   } else if (tabName === "search") {
     explorerView.classList.remove("active");
     searchView.classList.add("active");
-    explorerActions.forEach((btn) => {
-      if (btn.dataset.tab === "explorer") {
-        btn.style.display = "none";
-      }
-    });
     if (searchBtn) searchBtn.classList.add("active");
-    if (explorerTitle) {
-      explorerTitle.textContent = "Search";
-      explorerTitle.style.fontWeight = "600";
-    }
     const searchContainer = searchView.querySelector(".search-tab-container");
     if (searchContainer && !searchContainer.hasAttribute("data-initialized")) {
       initialize$9(searchContainer);
@@ -172949,17 +173149,12 @@ function setupTabToggle() {
   const searchBtn = document.getElementById("explorer-search-btn");
   if (searchBtn) {
     searchBtn.addEventListener("click", () => {
-      switchTab("search");
-    });
-  }
-  const explorerTitle = document.querySelector(".explorer-title");
-  if (explorerTitle) {
-    explorerTitle.addEventListener("click", () => {
       if (currentTab === "search") {
         switchTab("explorer");
+      } else {
+        switchTab("search");
       }
     });
-    explorerTitle.style.cursor = "pointer";
   }
 }
 function loadDirectory(path = ".") {
@@ -174145,6 +174340,39 @@ function downloadFolder(folderPath) {
     }
   });
 }
+function downloadMultiple(selection) {
+  return __async(this, null, function* () {
+    if (!selection || selection.length === 0) return;
+    try {
+      showMessage$1(`Preparing download of ${selection.length} items...`, "info");
+      const response = yield fetch("/editer/explorer/_api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "multiple",
+          paths: selection
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+      const blob = yield response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "download.zip";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showMessage$1(`Download completed (${selection.length} items)`, "success");
+    } catch (error) {
+      console.error("Multiple download error:", error);
+      showMessage$1("Failed to download: " + error.message, "error");
+    }
+  });
+}
 function showModal(modalId) {
   const modal2 = document.getElementById(modalId);
   if (modal2) {
@@ -174391,11 +174619,7 @@ function setupModalEvents() {
   });
 }
 function setupHeaderButtons() {
-  const newFileBtn = document.querySelector(".new-file-btn");
-  const newFolderBtn = document.querySelector(".new-folder-btn");
   const refreshBtn = document.querySelector(".refresh-btn");
-  if (newFileBtn) newFileBtn.addEventListener("click", () => showModal("create-file-modal"));
-  if (newFolderBtn) newFolderBtn.addEventListener("click", () => showModal("create-folder-modal"));
   if (refreshBtn) refreshBtn.addEventListener("click", () => refreshFileTree());
 }
 function setupUploadButtons() {
@@ -174535,6 +174759,10 @@ function setupExplorerContextMenuEvents() {
   qoomEvent$1.on("deleteMultiple", (e) => {
     const { selection } = e.detail;
     confirmDeleteMultiple(selection);
+  });
+  qoomEvent$1.on("downloadMultiple", (e) => {
+    const { selection } = e.detail;
+    downloadMultiple(selection);
   });
   qoomEvent$1.on("uploadFolder", (e) => {
     uploadFolderToFolder(e.detail);
@@ -175797,6 +176025,10 @@ function showGitHubPublishModal(projectFolderPath) {
     newRepoNameInput.addEventListener("input", updatePublishState);
     publishButton.addEventListener("click", () => __async(null, null, function* () {
       var _a4, _b3, _c2;
+      if (publishButton.dataset.inflight === "1") {
+        return;
+      }
+      publishButton.dataset.inflight = "1";
       const selectedCard = modal2.querySelector(".publisher-repo-card.is-selected");
       const option = selectedCard ? selectedCard.dataset.option : "existing";
       let repoName = projectName;
@@ -175849,13 +176081,14 @@ function showGitHubPublishModal(projectFolderPath) {
         const payload = {
           folder: projectFolderPath,
           repoName,
-          commitMessage: "Published from Qoom"
+          commitMessage: "Published from Qoom",
+          overwrite: true
         };
         console.log("[Publisher] Publishing to GitHub:", payload);
         console.log("[Publisher] Full path:", projectFolderPath);
         updateProgressBar(progressModal, 20, "Uploading to GitHub...");
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3e4);
+        const timeoutId = setTimeout(() => controller.abort(), 12e4);
         const response = yield fetch("/edit/publisher/_api/publish/github", {
           method: "POST",
           headers: {
@@ -175877,14 +176110,11 @@ function showGitHubPublishModal(projectFolderPath) {
         if (data.success) {
           const repoUrl = (_a4 = data.data) == null ? void 0 : _a4.repoUrl;
           const pushedFiles = ((_b3 = data.data) == null ? void 0 : _b3.pushedFiles) || 0;
-          const failedFiles = ((_c2 = data.data) == null ? void 0 : _c2.failedFiles) || 0;
+          const commitSha = (_c2 = data.data) == null ? void 0 : _c2.commitSha;
           updateProgressBar(progressModal, 100, "Published!");
           setTimeout(() => removeProgressModal(progressModal), 1e3);
-          if (failedFiles > 0) {
-            showMessage(`Published with ${failedFiles} errors. ${pushedFiles} files uploaded.`, "warning");
-          } else {
-            showMessage(`Published! ${pushedFiles} files uploaded`, "success");
-          }
+          const commitText = commitSha ? ` (commit ${commitSha.slice(0, 7)})` : "";
+          showMessage(`Published! ${pushedFiles} files uploaded${commitText}`, "success");
           if (repoUrl) {
             window.open(repoUrl, "_blank");
           }
@@ -175897,12 +176127,14 @@ function showGitHubPublishModal(projectFolderPath) {
         console.error("[Publisher] Upload error:", error);
         removeProgressModal(progressModal);
         if (error.name === "AbortError") {
-          showMessage("Upload timed out (30s). The server might still be processing. Check GitHub.", "error");
+          showMessage("Upload timed out (120s). The server might still be processing. Check GitHub before retrying.", "error");
         } else if (!navigator.onLine) {
           showMessage("No internet connection", "error");
         } else {
           showMessage(`Publish failed: ${error.message}`, "error");
         }
+      } finally {
+        publishButton.dataset.inflight = "0";
       }
     }));
     repoSelect.addEventListener("change", () => {
@@ -176232,7 +176464,7 @@ function setupMonacoEnvironment() {
 }
 function getInitialState() {
   const currentPath = window.location.pathname;
-  const filePath = currentPath.substring(6);
+  let filePath = currentPath.substring(6);
   if (!filePath || filePath === "") {
     throw new Error("Cannot parse current path from url");
   }
@@ -176260,7 +176492,22 @@ function getInitialState() {
       width: parseInt(localStorage.getItem("previewWidth")) || 250
     }
   };
-  const searchParams = window.location.search;
+  let searchParams = window.location.search;
+  if (!searchParams) {
+    try {
+      const lastUrl = localStorage.getItem("editerLastUrl");
+      if (lastUrl && lastUrl.startsWith("/edit/") && lastUrl.includes("?")) {
+        window.history.replaceState(null, "", lastUrl);
+        const savedFilePath = window.location.pathname.substring(6);
+        if (savedFilePath && savedFilePath !== "") {
+          filePath = savedFilePath;
+          state2.layout.activeFilePath = savedFilePath;
+        }
+        searchParams = window.location.search;
+      }
+    } catch (e) {
+    }
+  }
   if (!searchParams) {
     return state2;
   }
@@ -176333,6 +176580,10 @@ function updateUrl() {
   const newUrl = `/edit/${editerState$1.activeFilePath}${queryString ? "?" + queryString : ""}`;
   if (window.location.pathname + window.location.search !== newUrl) {
     window.history.replaceState(null, "", newUrl);
+  }
+  try {
+    localStorage.setItem("editerLastUrl", newUrl);
+  } catch (e) {
   }
 }
 function disableTextSelection() {

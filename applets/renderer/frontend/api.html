@@ -344,32 +344,199 @@
                 data.prefix = prefixMatch[1];
             }
 
-            // Extract routes (simplified parsing)
-            const routesMatch = text.match(/routes:\s*\[([^\]]+)\]/s);
-            if (routesMatch) {
-                const routesText = routesMatch[1];
-                
-                // Split by route objects (look for path: patterns)
-                const routeMatches = routesText.match(/{[^}]*path:\s*['"`][^'"`]+['"`][^}]*}/g);
-                
-                if (routeMatches) {
-                    routeMatches.forEach(routeText => {
-                        const route = {};
-                        
-                        const pathMatch = routeText.match(/path:\s*['"`]([^'"`]+)['"`]/);
-                        if (pathMatch) route.path = pathMatch[1];
-                        
-                        const methodMatch = routeText.match(/method:\s*['"`]([^'"`]+)['"`]/);
-                        if (methodMatch) route.method = methodMatch[1];
-                        
-                        if (route.path && route.method) {
-                            data.routes.push(route);
-                        }
-                    });
-                }
+            // Extract routes with bracket/object scanning so comments like [New] do not break parsing
+            const routesText = extractRoutesBlock(text);
+            if (routesText) {
+                const routeObjects = extractTopLevelObjects(routesText);
+                routeObjects.forEach(routeText => {
+                    const route = {};
+                    
+                    const pathMatch = routeText.match(/path:\s*['"`]([^'"`]+)['"`]/);
+                    if (pathMatch) route.path = pathMatch[1];
+                    
+                    const methodMatch = routeText.match(/method:\s*['"`]([^'"`]+)['"`]/);
+                    if (methodMatch) route.method = methodMatch[1];
+                    
+                    if (route.path && route.method) {
+                        data.routes.push(route);
+                    }
+                });
             }
 
             return data;
+        }
+
+        function extractRoutesBlock(text) {
+            const routesIndex = text.indexOf('routes:');
+            if (routesIndex === -1) return null;
+
+            const openIndex = text.indexOf('[', routesIndex);
+            if (openIndex === -1) return null;
+
+            let depth = 0;
+            let inSingle = false;
+            let inDouble = false;
+            let inTemplate = false;
+            let inLineComment = false;
+            let inBlockComment = false;
+            let escapeNext = false;
+
+            for (let i = openIndex; i < text.length; i++) {
+                const ch = text[i];
+                const next = text[i + 1];
+
+                if (inLineComment) {
+                    if (ch === '\n') inLineComment = false;
+                    continue;
+                }
+                if (inBlockComment) {
+                    if (ch === '*' && next === '/') {
+                        inBlockComment = false;
+                        i++;
+                    }
+                    continue;
+                }
+
+                if (!inSingle && !inDouble && !inTemplate) {
+                    if (ch === '/' && next === '/') {
+                        inLineComment = true;
+                        i++;
+                        continue;
+                    }
+                    if (ch === '/' && next === '*') {
+                        inBlockComment = true;
+                        i++;
+                        continue;
+                    }
+                }
+
+                if (escapeNext) {
+                    escapeNext = false;
+                    continue;
+                }
+
+                if (ch === '\\') {
+                    if (inSingle || inDouble || inTemplate) {
+                        escapeNext = true;
+                    }
+                    continue;
+                }
+
+                if (!inDouble && !inTemplate && ch === '\'') {
+                    inSingle = !inSingle;
+                    continue;
+                }
+                if (!inSingle && !inTemplate && ch === '"') {
+                    inDouble = !inDouble;
+                    continue;
+                }
+                if (!inSingle && !inDouble && ch === '`') {
+                    inTemplate = !inTemplate;
+                    continue;
+                }
+
+                if (inSingle || inDouble || inTemplate) {
+                    continue;
+                }
+
+                if (ch === '[') depth++;
+                if (ch === ']') {
+                    depth--;
+                    if (depth === 0) {
+                        return text.slice(openIndex + 1, i);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function extractTopLevelObjects(text) {
+            const objects = [];
+            let depth = 0;
+            let start = -1;
+            let inSingle = false;
+            let inDouble = false;
+            let inTemplate = false;
+            let inLineComment = false;
+            let inBlockComment = false;
+            let escapeNext = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const next = text[i + 1];
+
+                if (inLineComment) {
+                    if (ch === '\n') inLineComment = false;
+                    continue;
+                }
+                if (inBlockComment) {
+                    if (ch === '*' && next === '/') {
+                        inBlockComment = false;
+                        i++;
+                    }
+                    continue;
+                }
+
+                if (!inSingle && !inDouble && !inTemplate) {
+                    if (ch === '/' && next === '/') {
+                        inLineComment = true;
+                        i++;
+                        continue;
+                    }
+                    if (ch === '/' && next === '*') {
+                        inBlockComment = true;
+                        i++;
+                        continue;
+                    }
+                }
+
+                if (escapeNext) {
+                    escapeNext = false;
+                    continue;
+                }
+
+                if (ch === '\\') {
+                    if (inSingle || inDouble || inTemplate) {
+                        escapeNext = true;
+                    }
+                    continue;
+                }
+
+                if (!inDouble && !inTemplate && ch === '\'') {
+                    inSingle = !inSingle;
+                    continue;
+                }
+                if (!inSingle && !inTemplate && ch === '"') {
+                    inDouble = !inDouble;
+                    continue;
+                }
+                if (!inSingle && !inDouble && ch === '`') {
+                    inTemplate = !inTemplate;
+                    continue;
+                }
+
+                if (inSingle || inDouble || inTemplate) {
+                    continue;
+                }
+
+                if (ch === '{') {
+                    if (depth === 0) {
+                        start = i;
+                    }
+                    depth++;
+                    continue;
+                }
+                if (ch === '}') {
+                    depth--;
+                    if (depth === 0 && start !== -1) {
+                        objects.push(text.slice(start, i + 1));
+                        start = -1;
+                    }
+                }
+            }
+
+            return objects;
         }
 
         function renderApiDocumentation(data) {
@@ -550,6 +717,12 @@
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
         }
+
+        // Expose handlers for inline onclick attributes when script runs as module.
+        window.toggleRoute = toggleRoute;
+        window.toggleTrySection = toggleTrySection;
+        window.makeRequest = makeRequest;
+
         initAutoRefresh('{{FILE_PATH}}');
     </script>
 </body>

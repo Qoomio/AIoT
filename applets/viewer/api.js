@@ -21,6 +21,15 @@ import {
   handleInternalError, 
   logActivity 
 } from './app.js';
+import { isLoggerAdminRequest, getClientIP } from '../logger/app.js';
+
+/** Logger viewer assets - IP restrictions handled via nginx, not application code */
+const LOGGER_VIEWER_STATIC_RE = /^applets\/logger\/frontend\/viewer\.(html|js|css)$/i;
+
+function isProtectedLoggerViewerPath(filePath) {
+  const pathOnly = String(filePath || '').split('?')[0].replace(/^\//, '');
+  return LOGGER_VIEWER_STATIC_RE.test(pathOnly);
+}
 
 /**
  * Standard API Module Export Format
@@ -52,6 +61,14 @@ const api = {
           // Default to index.html for root path
           if (filePath === '' || filePath === '/') {
             filePath = 'index.html';
+          }
+          
+          if (isProtectedLoggerViewerPath(filePath)) {
+            if (!isLoggerAdminRequest(req)) {
+              logActivity('logger_viewer_forbidden', { filePath, ip: getClientIP(req) });
+              handleForbiddenAccess(res, filePath.split('?')[0]);
+              return;
+            }
           }
           
           logActivity('file_request', { filePath, method: req.method });
@@ -180,6 +197,15 @@ const api = {
           // Default to index.html for root path
           if (filePath === '' || filePath === '/') {
             filePath = 'index.html';
+          }
+          
+          if (isProtectedLoggerViewerPath(filePath)) {
+            if (!isLoggerAdminRequest(req)) {
+              logActivity('logger_viewer_forbidden', { filePath, ip: getClientIP(req), method: 'HEAD' });
+              res.writeHead(403, { 'Content-Type': 'text/plain' });
+              res.end();
+              return;
+            }
           }
           
           logActivity('head_request', { filePath, method: req.method });

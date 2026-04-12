@@ -3,8 +3,6 @@
  * Fixed Version: Robust Body Parsing & Device Flow Auth
  */
 
-//I'm good
-
 import https from 'https';
 
 import {
@@ -24,15 +22,19 @@ import {
   getGitHubUser,
   getAllFiles,
   uploadFileToGitHub,
+  publishFilesSingleCommit,
   withRetry,
-  submitToCommunity,     // [추가]
-	getCommunityProjects,  // [추가]
-	updateCommunityStatus  // [추가]
+  saveCommunityDraft,
+  submitCommunityDraft,
+  getCommunityProjects,  // [추가]
+  getCommunityPublicProjects,
+  updateCommunityStatus  // [추가]
 } from './app.js';
 import { logActivity, sendApiResponse } from '../editer/utils/common.js';
 
 // GitHub OAuth App Client ID
 const GITHUB_CLIENT_ID = 'Ov23liyDtn21SHf3KiFR';
+const activePublishLocks = new Set();
 
 // [헬퍼 함수] GitHub API 요청 (HTTPS 모듈 사용)
 function makeGitHubRequest(path, method, data) {
@@ -84,6 +86,19 @@ async function parseReqBody(req) {
   } catch (e) {
     return {};
   }
+}
+
+function getPublishLockKey(owner, repoName, folder) {
+  return [owner, repoName, folder].map((v) => String(v || '').trim().toLowerCase()).join('::');
+}
+
+function getAdminInfo(req, payload = {}) {
+  const admin = payload.admin || {};
+  return {
+    id: String(admin.id || req.headers['x-admin-id'] || '').trim(),
+    name: String(admin.name || req.headers['x-admin-name'] || '').trim(),
+    email: String(admin.email || req.headers['x-admin-email'] || '').trim().toLowerCase()
+  };
 }
 
 /**
@@ -279,10 +294,11 @@ const api = {
       path: '/_api/publish/github',
       method: 'POST',
       handler: async (req, res) => {
+        let lockKey = '';
         try {
           // [수정됨] 안전한 파싱 함수 사용
           const parsedBody = await parseReqBody(req);
-          const { folder, repoName, commitMessage } = parsedBody;
+          const { folder, repoName, commitMessage, overwrite = true } = parsedBody;
 
           if (!folder || !repoName) return sendApiResponse(res, 400, false, null, 'Project folder and repo name required.');
 
@@ -291,37 +307,48 @@ const api = {
 
           const userInfo = await getGitHubUser(token);
           const owner = userInfo.login;
+          lockKey = getPublishLockKey(owner, repoName, folder);
+          if (activePublishLocks.has(lockKey)) {
+            return sendApiResponse(
+              res,
+              409,
+              false,
+              null,
+              'A publish is already in progress for this project/repository.'
+            );
+          }
+          activePublishLocks.add(lockKey);
 
           logActivity('publisher', 'github_publish_start', { repo: repoName, folder });
 
           const projectFiles = await getAllFiles(folder);
           if (!projectFiles || projectFiles.length === 0) return sendApiResponse(res, 400, false, null, 'No files to upload.');
 
-          let successCount = 0;
-          let failCount = 0;
+          const result = await publishFilesSingleCommit(
+            owner,
+            repoName,
+            projectFiles,
+            token,
+            commitMessage || 'Updated via Qoom',
+            overwrite !== false
+          );
 
-          for (const file of projectFiles) {
-            try {
-              await uploadFileToGitHub(owner, repoName, file.path, file.content, token, commitMessage || 'Updated via Qoom');
-              successCount++;
-            } catch (err) {
-              console.error(`Upload failed: ${file.path}`, err.message);
-              failCount++;
-            }
-          }
-
-          const resultMessage = `Published ${successCount} files. (${failCount} failed)`;
+          const resultMessage = `Published ${projectFiles.length} files in a single commit.`;
           const repoUrl = `https://github.com/${owner}/${repoName}`;
 
           return sendApiResponse(res, 200, true, {
             message: resultMessage,
             repoUrl: repoUrl,
-            pushedFiles: successCount,
-            failedFiles: failCount
+            pushedFiles: projectFiles.length,
+            commitSha: result.commitSha,
+            branch: result.branch,
+            overwrite: overwrite !== false
           });
 
         } catch (error) {
           sendApiResponse(res, 500, false, null, error.message);
+        } finally {
+          if (lockKey) activePublishLocks.delete(lockKey);
         }
       }
     },
@@ -438,6 +465,28 @@ const api = {
     // ==========================================
     
     {
+      // 0. 커뮤니티 draft 저장
+      path: '/_api/community/draft',
+      method: 'POST',
+      handler: async (req, res) => {
+        try {
+          const parsedBody = await parseReqBody(req);
+          if (!parsedBody || Object.keys(parsedBody).length === 0) {
+            return sendApiResponse(res, 400, false, null, 'No data provided');
+          }
+
+          const result = await saveCommunityDraft(parsedBody);
+          sendApiResponse(res, 200, true, {
+            message: 'Draft saved',
+            data: result
+          });
+        } catch (error) {
+          sendApiResponse(res, 500, false, null, error.message);
+        }
+      }
+    },
+
+    {
       // 1. 커뮤니티 배포 신청 (사용자 -> 로컬 DB)
       path: '/_api/community/submit',
       method: 'POST',
@@ -449,8 +498,8 @@ const api = {
             return sendApiResponse(res, 400, false, null, 'No data provided');
           }
 
-          // app.js의 함수 호출
-          const result = await submitToCommunity(parsedBody);
+          // draft -> submitted 상태 전환
+          const result = await submitCommunityDraft(parsedBody);
           
           sendApiResponse(res, 200, true, {
             message: 'Submitted successfully to Community',
@@ -479,6 +528,19 @@ const api = {
         }
       }
     },
+    {
+      // 2-1. 공개 커뮤니티 목록 조회 (APPROVED only)
+      path: '/_api/community/public/projects',
+      method: 'GET',
+      handler: async (req, res) => {
+        try {
+          const projects = await getCommunityPublicProjects();
+          sendApiResponse(res, 200, true, projects);
+        } catch (error) {
+          sendApiResponse(res, 500, false, null, error.message);
+        }
+      }
+    },
 
     {
       // 3. 관리자 승인/거절 처리 (관리자용)
@@ -492,11 +554,19 @@ const api = {
           if (!id || !status) {
             return sendApiResponse(res, 400, false, null, 'ID and Status are required');
           }
+          const normalizedStatus = String(status).trim().toUpperCase();
+          if (!['APPROVED', 'REJECTED'].includes(normalizedStatus)) {
+            return sendApiResponse(res, 400, false, null, 'Status must be APPROVED or REJECTED');
+          }
+          if (normalizedStatus === 'REJECTED' && !String(comment || '').trim()) {
+            return sendApiResponse(res, 400, false, null, 'Rejection reason(comment) is required');
+          }
 
-          const result = await updateCommunityStatus(id, status, comment);
+          const adminInfo = getAdminInfo(req, parsedBody);
+          const result = await updateCommunityStatus(id, normalizedStatus, comment, adminInfo);
 
           sendApiResponse(res, 200, true, {
-            message: `Project status updated to ${status}`,
+            message: `Project status updated to ${normalizedStatus}`,
             data: result
           });
         } catch (error) {

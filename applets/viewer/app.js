@@ -151,7 +151,8 @@ function serveFile(req, res, filePath, contentType, data) {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isDev = nodeEnv !== 'production';
   const isAppletAsset = filePath.includes('/applets/') || filePath.startsWith('applets/');
-  const isHotChangingAsset = filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html');
+  const isProductAsset = filePath.includes('/products/') || filePath.startsWith('products/');
+  const isHotChangingAsset = filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html') || filePath.endsWith('.svg');
 
   // Special handling for Monaco CSS files imported as modules
   if (contentType === 'text/javascript' && filePath.includes('monaco-editor/esm/') && filePath.endsWith('.css')) {
@@ -200,8 +201,8 @@ export {};`;
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
       headers['Pragma'] = 'no-cache';
       headers['Expires'] = '0';
-    } else if (isDev && isAppletAsset && isHotChangingAsset) {
-      // In dev, always bypass cache for applet assets so UI changes apply immediately.
+    } else if (isDev && (isAppletAsset || isProductAsset) && isHotChangingAsset) {
+      // In dev, always bypass cache for applet/product assets so UI changes apply immediately.
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
       headers['Pragma'] = 'no-cache';
       headers['Expires'] = '0';
@@ -226,8 +227,8 @@ export {};`;
     headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     headers['Pragma'] = 'no-cache';
     headers['Expires'] = '0';
-  } else if (isDev && isAppletAsset && isHotChangingAsset) {
-    // In dev, always bypass cache for applet assets so UI changes apply immediately.
+  } else if (isDev && (isAppletAsset || isProductAsset) && isHotChangingAsset) {
+    // In dev, always bypass cache for applet/product assets so UI changes apply immediately.
     headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     headers['Pragma'] = 'no-cache';
     headers['Expires'] = '0';

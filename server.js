@@ -5,12 +5,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import zlib from 'zlib';
 
-// dotenv is helpful in dev, but the server should not crash if it's missing in a partial install.
+// dotenv: .env 먼저 로드 후 env.env 로드 (env.env가 같은 키는 덮어써서 우선 적용, Stripe 등 API 키용)
 try {
   const dotenvModule = await import('dotenv');
   const dotenv = dotenvModule.default || dotenvModule;
   if (dotenv && typeof dotenv.config === 'function') {
-dotenv.config();
+    dotenv.config();
+    const __dirnameForEnv = path.dirname(fileURLToPath(import.meta.url));
+    dotenv.config({ path: path.join(__dirnameForEnv, 'env.env') });
   }
 } catch (e) {
   console.warn('[server] dotenv not loaded:', e?.code || e?.message || e);
@@ -85,7 +87,7 @@ async function initializeConsole() {
     const consoleCapture = await import('./applets/consoler/console-capture.js');
     consoleCapture.default.start();
   } catch(ex) {
-    console.error('Error initializing console capture:', ex);
+    console.log('Console capturer is not available');
   }
 }
 
@@ -336,11 +338,14 @@ async function loadAppletRoutes() {
  * @returns {Object|null} Matching route or null
  */
 function findAppletRoute(method, url) {
-  const urlParts = url.split('?')[0]; // Remove query string
+  const urlParts = normalizePathForMatch(url.split('?')[0]); // Remove query string
 
   // Sort routes by specificity (most specific first)
   const sortedRoutes = [...appletRoutes].sort((a, b) => {
-    // Exact matches first
+    // Literal path (no :param) before parameterized path
+    if (!a.path.includes(':') && b.path.includes(':')) return -1;
+    if (a.path.includes(':') && !b.path.includes(':')) return 1;
+    // Exact matches (no *, no :) before wildcards
     if (!a.path.includes('*') && !a.path.includes(':') && b.path.includes('*')) return -1;
     if (!b.path.includes('*') && !b.path.includes(':') && a.path.includes('*')) return 1;
 
@@ -357,14 +362,21 @@ function findAppletRoute(method, url) {
 
   for (const route of sortedRoutes) {
     if (route.method === method.toUpperCase()) {
+      const normalizedRoutePath = normalizePathForMatch(route.path);
       // Simple path matching (for now - can be enhanced with parameters later)
-      if (route.path === urlParts || pathMatches(route.path, urlParts)) {
+      if (normalizedRoutePath === urlParts || pathMatches(normalizedRoutePath, urlParts)) {
         return route;
       }
     }
   }
 
   return null;
+}
+
+function normalizePathForMatch(rawPath) {
+  const value = String(rawPath || '/');
+  if (value === '/') return '/';
+  return value.replace(/\/+$/, '') || '/';
 }
 
 /**
