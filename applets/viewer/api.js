@@ -21,7 +21,18 @@ import {
   handleInternalError, 
   logActivity 
 } from './app.js';
-import { isLoggerAdminRequest, getClientIP } from '../logger/app.js';
+
+// Optional logger import - viewer works without logger applet
+let isLoggerAdminRequest = () => false;
+let getClientIP = (req) => req.socket?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+
+try {
+  const loggerModule = await import('../logger/app.js');
+  if (loggerModule.isLoggerAdminRequest) isLoggerAdminRequest = loggerModule.isLoggerAdminRequest;
+  if (loggerModule.getClientIP) getClientIP = loggerModule.getClientIP;
+} catch {
+  // Logger applet not available - using fallback implementations
+}
 
 /** Logger viewer assets - IP restrictions handled via nginx, not application code */
 const LOGGER_VIEWER_STATIC_RE = /^applets\/logger\/frontend\/viewer\.(html|js|css)$/i;
