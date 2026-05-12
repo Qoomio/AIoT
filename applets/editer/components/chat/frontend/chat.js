@@ -504,7 +504,7 @@ function createFileSelectorTreeHTML(items, parentPath = '', level = 0) {
         const itemPath = parentPath ? parentPath + '/' + item.name : item.name;
         html += `
             <div class="file-selector-item" data-path="${itemPath}" data-is-directory="${item.isDirectory}">
-                <span class="file-icon">${item.isDirectory ? '📁' : '📄'}</span>
+                <span class="file-icon"><img src="/view/applets/shared/assets/${item.isDirectory ? 'folder' : 'file'}.svg" width="14" height="14" alt=""></span>
                 <span class="file-name">${item.name}</span>
                 ${item.isDirectory ? '<span class="expand-icon">▶</span>' : ''}
             </div>
@@ -833,20 +833,20 @@ async function processStarterModeResponse(aiResponse, userMessage) {
                 return;
             }
             
-            addMessage('🔍 Project detected! Analyzing code blocks...', 'system');
+            addMessage('Project detected! Analyzing code blocks...', 'system');
             
             // Extract code blocks from AI response
             const codeBlocks = extractCodeBlocks(aiResponse);
             
             if (codeBlocks.length > 0) {
-                addMessage(`📁 Found ${codeBlocks.length} file(s). Creating project "${projectInfo.projectName}"...`, 'system');
+                addMessage(`Found ${codeBlocks.length} file(s). Creating project "${projectInfo.projectName}"...`, 'system');
                 
                 // Create project with detected language and files
                 const result = await createProjectFromAI(projectInfo.projectName, projectInfo.language, codeBlocks);
                 
                 if (result.success) {
                     addMessage(`✅ Project "${projectInfo.projectName}" created successfully!`, 'system');
-                    addMessage(`📂 Files created: ${result.files.join(', ')}`, 'system');
+                    addMessage(`Files created: ${result.files.join(', ')}`, 'system');
                     
                     // Add View Project button instead of auto-redirect
                     addProjectViewButton(projectInfo.projectName, result.files);
@@ -932,14 +932,14 @@ function validateProjectInfo(projectInfo, userMessage) {
  * Generate clarification message for missing information
  */
 function generateClarificationMessage(missingInfo) {
-    let message = "I'd love to help you create a project! 🚀 However, I need a bit more information:\n\n";
-    
+    let message = "I'd love to help you create a project! However, I need a bit more information:\n\n";
+
     if (missingInfo.includes('project_name')) {
-        message += "**📝 Project Name**: What would you like to call your project?\n";
+        message += "**Project Name**: What would you like to call your project?\n";
     }
-    
+
     if (missingInfo.includes('language')) {
-        message += "**💻 Programming Language**: Which language or framework should I use?\n";
+        message += "**Programming Language**: Which language or framework should I use?\n";
         message += "   *(Examples: Python, JavaScript, React, Vue, Java, Go, etc.)*\n";
     }
     
@@ -1328,12 +1328,12 @@ function addProjectViewButton(projectName, files) {
     projectViewSection.innerHTML = `
         <div class="project-divider"></div>
         <div class="project-view-container">
-            <p class="project-ready-text">🎉 Project is ready! Files created:</p>
+            <p class="project-ready-text"><img src="/view/applets/shared/assets/check-circle.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:4px"> Project is ready! Files created:</p>
             <div class="project-files">
                 ${files.map(file => `<span class="file-tag">${file}</span>`).join('')}
             </div>
             <button class="view-project-btn" data-file-path="${editPath}">
-                📁 View Project
+                <img src="/view/applets/shared/assets/folder.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:4px"> View Project
             </button>
         </div>
     `;
@@ -1361,7 +1361,7 @@ function openProjectFile(filePath) {
         // Use editerState to communicate with MultiEditor instead of direct window access
         if (editerState && editerState.trigger) {
             editerState.trigger('openFile', { fileName, filePath });
-            addMessage('📖 File opened in editor!', 'system');
+            addMessage('File opened in editor!', 'system');
         } else {
             // Fallback: direct URL change
             window.location.href = '/edit/' + filePath;

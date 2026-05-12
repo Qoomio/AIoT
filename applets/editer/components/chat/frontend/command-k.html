@@ -4,7 +4,7 @@
         <!-- Header -->
         <div class="command-k-header">
             <h3 class="command-k-title">
-                <span class="icon">🤖</span>
+                <span class="icon"><img src="/view/applets/shared/assets/cpu.svg" width="16" height="16" alt=""></span>
                 Qoom AI Assistant
             </h3>
             <button class="command-k-close" id="commandKClose" title="Close (Esc)">×</button>
@@ -16,16 +16,16 @@
             <div class="command-k-input-section">
                 <!-- Context Info -->
                 <div class="command-k-context-info" id="commandKContextInfo">
-                    <span class="file-icon">📄</span>
+                    <span class="file-icon"><img src="/view/applets/shared/assets/file.svg" width="14" height="14" alt=""></span>
                     <span class="context-text" id="commandKContextText">No file selected</span>
                     <span class="line-info" id="commandKLineInfo" style="display: none;">Line 0</span>
                 </div>
 
                 <!-- Input -->
                 <div class="command-k-input-wrapper">
-                    <textarea 
-                        class="command-k-input" 
-                        id="commandKInput" 
+                    <textarea
+                        class="command-k-input"
+                        id="commandKInput"
                         placeholder="What would you like me to help you with? (e.g., 'Add error handling to this function', 'Write unit tests', 'Optimize this code')"
                         rows="3"
                     ></textarea>
@@ -38,7 +38,7 @@
                     Cancel
                 </button>
                 <button class="command-k-btn command-k-btn-primary" id="commandKSend" disabled>
-                    <span class="btn-icon">✨</span>
+                    <span class="btn-icon"><img src="/view/applets/shared/assets/zap.svg" width="14" height="14" alt=""></span>
                     Generate
                 </button>
             </div>
@@ -47,7 +47,7 @@
             <div class="command-k-response-section" id="commandKResponseSection" style="display: none;">
                 <div class="command-k-response-header">
                     <h4 class="command-k-response-title" id="commandKResponseTitle">
-                        <span class="icon">💭</span>
+                        <span class="icon"><img src="/view/applets/shared/assets/message-square.svg" width="14" height="14" alt=""></span>
                         AI Response
                     </h4>
                 </div>
@@ -60,26 +60,26 @@
             <div class="command-k-apply-section" id="commandKApplySection">
                 <div class="command-k-apply-header">
                     <h4 class="command-k-apply-title">
-                        <span class="icon">🔄</span>
+                        <span class="icon"><img src="/view/applets/shared/assets/refresh-cw.svg" width="14" height="14" alt=""></span>
                         Apply Changes
                     </h4>
                 </div>
-                
+
                 <div class="command-k-diff-preview" id="commandKDiffPreview">
                     <!-- Diff preview will be shown here -->
                 </div>
-                
+
                 <div class="command-k-apply-actions">
                     <button class="command-k-btn command-k-btn-apply" id="commandKApply">
-                        <span class="btn-icon">✅</span>
+                        <span class="btn-icon"><img src="/view/applets/shared/assets/check.svg" width="14" height="14" alt=""></span>
                         Apply
                     </button>
                     <button class="command-k-btn command-k-btn-reject" id="commandKReject">
-                        <span class="btn-icon">❌</span>
+                        <span class="btn-icon"><img src="/view/applets/shared/assets/x.svg" width="14" height="14" alt=""></span>
                         Reject
                     </button>
                     <button class="command-k-btn command-k-btn-secondary" id="commandKAskMore">
-                        <span class="btn-icon">💬</span>
+                        <span class="btn-icon"><img src="/view/applets/shared/assets/message-square.svg" width="14" height="14" alt=""></span>
                         Ask for Changes
                     </button>
                 </div>

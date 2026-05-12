@@ -75,7 +75,7 @@ applets/editer/explorer/
     -   Test `getDirectoryContents()` function with various paths
     -   Test error handling for invalid paths
 
-## Create Creater Sub-Applet
+## Create Creator Sub-Applet
 
 **Purpose**: Handle creating new files and folders
 **New Functionality**: Not currently implemented
@@ -83,13 +83,13 @@ applets/editer/explorer/
 ### File Structure
 
 ```
-applets/editer/creater/
+applets/editer/creator/
 ├── api.js          # File/folder creation API routes
 ├── app.js          # Creation helper functions
 ├── frontend/       # Frontend assets
-│   ├── creater.html
-│   ├── creater.css
-│   └── creater.js
+│   ├── creator.html
+│   ├── creator.css
+│   └── creator.js
 └── tests/          # Unit tests
     ├── api.test.js
     └── app.test.js
@@ -99,19 +99,19 @@ applets/editer/creater/
 
 -   [ ] **Create folder structure**
 
-    -   Create `applets/editer/creater/` directory
+    -   Create `applets/editer/creator/` directory
     -   Create `frontend/` and `tests/` subdirectories
 
--   [ ] **Create API routes in creater/api.js**
+-   [ ] **Create API routes in creator/api.js**
 
     ```javascript
     // Routes to implement:
-    // POST /edit/creater/_api/file     - Create new file
-    // POST /edit/creater/_api/folder   - Create new folder
-    // POST /edit/creater/_api/template - Create from template
+    // POST /edit/creator/_api/file     - Create new file
+    // POST /edit/creator/_api/folder   - Create new folder
+    // POST /edit/creator/_api/template - Create from template
     ```
 
--   [ ] **Create helper functions in creater/app.js**
+-   [ ] **Create helper functions in creator/app.js**
 
     -   `createFile(filePath, content)` - Create new file with content
     -   `createFolder(folderPath)` - Create new folder
@@ -236,6 +236,6 @@ applets/editer/uploader/
 ## Migration Strategy
 
 1. **Phase 1**: Create explorer sub-applet (least disruptive)
-2. **Phase 2**: Add creater sub-applet (new functionality)
+2. **Phase 2**: Add creator sub-applet (new functionality)
 3. **Phase 3**: Add uploader sub-applet (new functionality)
 4. **Phase 4**: Clean up and optimize integration

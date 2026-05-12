@@ -104,7 +104,7 @@ function displaySearchResults(results) {
 
         const iconSpan = document.createElement('span');
         iconSpan.className = 'result-file-icon';
-        iconSpan.textContent = '📄';
+        iconSpan.innerHTML = '<img src="/view/applets/shared/assets/file.svg" width="14" height="14" alt="">';
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'result-file-name';

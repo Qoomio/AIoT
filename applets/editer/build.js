@@ -14,7 +14,7 @@ const buildOptions = {
   sourcemap: true,
   resolveExtensions: ['.js', '.ts'],
   external: [
-    '/view/applets/navigater/frontend/navigater.js',
+    '/view/applets/navigator/frontend/navigator.js',
     '/view/applets/shared/file-types-config.js',
     '/view/applets/editer/monaco-editor/esm/vs/editor/editor.main.js',
     '/view/applets/shared/marked.esm.js'

@@ -1,4 +1,4 @@
-import { inject as injectNavigater } from '../../navigater/frontend/navigater.js';
+import { inject as injectNavigator } from '../../navigator/frontend/navigator.js';
 import qoomEvent from "../utils/qoomEvent.js"
 
 import Editer from './model.js';
@@ -223,7 +223,7 @@ function updateUrl() {
         window.history.replaceState(null, "", newUrl);
     }
 
-    // Save the current editor URL to localStorage so navigater can restore it
+    // Save the current editor URL to localStorage so navigator can restore it
     try {
         localStorage.setItem('editerLastUrl', newUrl);
     } catch (e) {
@@ -425,7 +425,7 @@ async function initialize() {
         // Set Monaco Editor globally
         window.monaco = monaco;
         
-        injectNavigater('editer');
+        injectNavigator('editer');
 
         const state = getInitialState();
         

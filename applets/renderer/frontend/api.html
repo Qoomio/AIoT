@@ -543,8 +543,10 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
 
-            // Set base URL for testing
-            baseUrl = window.location.origin + (data.prefix || '');
+            // Requests should start from the origin. Prefix is already part of the
+            // rendered route path, so adding it here causes duplicated paths like
+            // /community/community/categories.
+            baseUrl = window.location.origin;
 
             // Populate meta information
             document.getElementById('api-name').textContent = data.meta.name || 'Unknown API';

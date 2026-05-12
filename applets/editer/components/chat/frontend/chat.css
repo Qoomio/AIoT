@@ -146,8 +146,7 @@
 }
 
 .starter-mode .chat-header h3::after {
-    content: ' 🚀';
-    animation: rocket-float 2s ease-in-out infinite;
+    content: '';
 }
 
 .starter-mode .toggle-label {

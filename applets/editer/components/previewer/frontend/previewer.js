@@ -102,9 +102,9 @@ function showTerminalPreview(terminalConfig) {
 		<div class="previewer-title">${terminalConfig.title} - ${terminalConfig.workingDirectory}</div>
 		<div class="previewer-actions">
 			<button class="preview-btn" id="runScript" title="Run Script">▶️</button>
-			<button class="reset-terminal-btn" id="resetTerminal" title="Reset Terminal Session">🔥</button>
-			<button class="refresh-preview-btn" id="refreshTerminal" title="Restart Terminal">🔄</button>
-			<button class="open-external-btn" id="openFullTerminal" title="Open in New Tab">↗️</button>
+			<button class="reset-terminal-btn" id="resetTerminal" title="Reset Terminal Session"><img src="/view/applets/shared/assets/zap.svg" width="14" height="14" alt=""></button>
+			<button class="refresh-preview-btn" id="refreshTerminal" title="Restart Terminal"><img src="/view/applets/shared/assets/refresh-cw.svg" width="14" height="14" alt=""></button>
+			<button class="open-external-btn" id="openFullTerminal" title="Open in New Tab"><img src="/view/applets/shared/assets/external-link.svg" width="14" height="14" alt=""></button>
 		</div>
 	`;
 	const encodedPath = encodeURIComponent(terminalConfig.workingDirectory);
@@ -286,8 +286,8 @@ function setupPreviewForRenderer() {
 	previewerHeader.innerHTML = `
 		<div class="previewer-title">${state.activeFilePath}</div>
 		<div class="previewer-actions">
-			<button class="refresh-preview-btn" title="Refresh Preview">🔄</button>
-			<button class="open-external-btn" title="Open in New Tab">🔗</button>
+			<button class="refresh-preview-btn" title="Refresh Preview"><img src="/view/applets/shared/assets/refresh-cw.svg" width="14" height="14" alt=""></button>
+			<button class="open-external-btn" title="Open in New Tab"><img src="/view/applets/shared/assets/external-link.svg" width="14" height="14" alt=""></button>
 		</div>
 	`;
 

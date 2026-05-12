@@ -4,14 +4,16 @@
     box-sizing: border-box;
 }
 
-body { 
+body {
     font-family: 'Courier New', monospace;
-    margin: 0; 
-    padding: 0; 
+    margin: 0;
+    padding: 0;
     background-color: #1e1e1e;
     color: #d4d4d4;
     height: 100vh;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 
@@ -83,7 +85,7 @@ body {
 }
 
 .terminal-container {
-    height: calc(100vh - 50px - 35px - 32px);
+    height: calc(100vh - 50px);
     background-color: #000000;
     position: relative;
     overflow: hidden;
@@ -117,9 +119,7 @@ body {
 
 /* Footer Styles */
 .footer {
-    background-color: #2d2d30;
-    border-top: 1px solid #3e3e42;
-    height: 35px;
+    display: none;
 }
 
 @media (max-width: 768px) {

@@ -79,6 +79,7 @@ function scheduleLoadRetry(dirPath) {
             loadDirectoryContents(dirPath);
             return;
         }
+        
         if (nested.querySelector('li.loading')) loadDirectoryContents(dirPath);
     }, delay);
 }
@@ -121,15 +122,177 @@ function showMessage(message, type = 'info') {
     setTimeout(() => { messageDiv.remove(); }, 3000);
 }
 
-// Get file icon for display
+// Get file icon for display — JetBrains-style official technology icons (locally served)
+const ICON_BASE = '/view/applets/shared/assets';
+
+function _di(name, variant = 'original') {
+    return `<img src="${ICON_BASE}/${name}-${variant}.svg" width="16" height="16" style="display:block" onerror="this.style.display='none'">`;
+}
+
+function _doc(color, shade, label) {
+    let text = '';
+    if (label) {
+        const n = label.length;
+        const fs = n <= 1 ? 6.5 : n === 2 ? 5.2 : 4.2;
+        text = `<text x="8" y="10" text-anchor="middle" dominant-baseline="middle" ` +
+               `font-size="${fs}" font-family="'Courier New',monospace" ` +
+               `font-weight="bold" fill="white" opacity="0.9">${label}</text>`;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">` +
+           `<path d="M2 0h8l4 4v11H2z" fill="${color}"/>` +
+           `<path d="M10 0l4 4h-4z" fill="${shade}"/>` +
+           text + `</svg>`;
+}
+
+const FILE_ICONS = {
+    folder: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">` +
+            `<path d="M1.5 3A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 ` +
+            `1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H6.914a.5.5 0 0 1-.354-.146l-.853-.854A1.5 1.5 ` +
+            `0 0 0 4.672 3H1.5z" fill="#dcb67a"/></svg>`,
+
+    // Special full-filename matches
+    byName: {
+        'dockerfile':          _di('docker'),
+        '.gitignore':          _di('git'),
+        '.gitattributes':      _di('git'),
+        '.env':                _doc('#4eaa25', '#3a8018', 'EN'),
+        '.env.local':          _doc('#4eaa25', '#3a8018', 'EN'),
+        '.eslintrc':           _doc('#4b32c3', '#3020a0', 'EL'),
+        '.eslintrc.js':        _doc('#4b32c3', '#3020a0', 'EL'),
+        '.eslintrc.json':      _doc('#4b32c3', '#3020a0', 'EL'),
+        '.prettierrc':         _doc('#f7b93e', '#cc9010', 'PR'),
+        '.prettierrc.json':    _doc('#f7b93e', '#cc9010', 'PR'),
+        'package.json':        _di('nodejs', 'plain'),
+        'package-lock.json':   _di('nodejs', 'plain'),
+        'tsconfig.json':       _di('typescript'),
+        'jsconfig.json':       _di('javascript'),
+        'webpack.config.js':   _di('webpack'),
+        'vite.config.js':      _di('vitejs'),
+        'vite.config.ts':      _di('vitejs'),
+        'next.config.js':      _di('nextjs', 'plain'),
+        'next.config.ts':      _di('nextjs', 'plain'),
+        'tailwind.config.js':  _di('tailwindcss', 'original'),
+        'tailwind.config.ts':  _di('tailwindcss', 'original'),
+        'readme.md':           _di('markdown'),
+        'license':             _doc('#d4d4d4', '#aaaaaa', 'LI'),
+        'makefile':            _doc('#e34c26', '#b83018', 'MK'),
+    },
+
+    // Extension-based matches
+    byExt: {
+        // JavaScript family
+        'js':     _di('javascript'),
+        'mjs':    _di('javascript'),
+        'cjs':    _di('javascript'),
+        'jsx':    _di('react'),
+        // TypeScript family
+        'ts':     _di('typescript'),
+        'tsx':    _di('react'),
+        // Web
+        'html':   _di('html5'),
+        'htm':    _di('html5'),
+        'css':    _di('css3'),
+        'scss':   _di('sass'),
+        'sass':   _di('sass'),
+        'less':   _doc('#1d365d', '#142848', 'LE'),
+        // Data / Config
+        'json':   _doc('#cbcb41', '#a8a820', '{}'),
+        'jsonc':  _doc('#cbcb41', '#a8a820', '{}'),
+        'xml':    _doc('#f97316', '#d45f00', 'XM'),
+        'yml':    _doc('#cb171e', '#a01015', 'YM'),
+        'yaml':   _doc('#cb171e', '#a01015', 'YM'),
+        'toml':   _doc('#9c4221', '#7a3010', 'TM'),
+        'ini':    _doc('#9b9b9b', '#6f6f6f', 'IN'),
+        'env':    _doc('#4eaa25', '#3a8018', 'EN'),
+        // Documentation
+        'md':     _di('markdown'),
+        'mdx':    _di('markdown'),
+        'txt':    _doc('#9b9b9b', '#6f6f6f', 'TX'),
+        // Python
+        'py':     _di('python'),
+        'pyw':    _di('python'),
+        'ipynb':  _di('jupyter'),
+        // Database
+        'sql':    _di('mysql'),
+        // Shell
+        'sh':     _di('bash', 'plain'),
+        'bash':   _di('bash', 'plain'),
+        'zsh':    _di('bash', 'plain'),
+        'fish':   _di('bash', 'plain'),
+        // PHP
+        'php':    _di('php', 'plain'),
+        // Ruby
+        'rb':     _di('ruby'),
+        // Go
+        'go':     _di('go', 'original'),
+        // Rust
+        'rs':     _di('rust', 'original'),
+        // Java / Kotlin
+        'java':   _di('java'),
+        'kt':     _di('kotlin'),
+        // Frontend frameworks
+        'vue':    _di('vuejs'),
+        'svelte': _di('svelte'),
+        // C family
+        'c':      _di('c'),
+        'h':      _di('c'),
+        'cpp':    _di('cplusplus'),
+        'cc':     _di('cplusplus'),
+        'cs':     _di('csharp'),
+        // Other languages
+        'swift':  _di('swift'),
+        'dart':   _di('dart'),
+        'r':      _di('r', 'plain'),
+        'lua':    _di('lua', 'plain'),
+        'ex':     _di('elixir'),
+        'exs':    _di('elixir'),
+        'hs':     _di('haskell'),
+        // Image
+        'svg':    _doc('#ff9900', '#cc7700', 'SG'),
+        'png':    _doc('#ff9900', '#cc7700', 'IM'),
+        'jpg':    _doc('#ff9900', '#cc7700', 'IM'),
+        'jpeg':   _doc('#ff9900', '#cc7700', 'IM'),
+        'gif':    _doc('#ff9900', '#cc7700', 'IM'),
+        'webp':   _doc('#ff9900', '#cc7700', 'IM'),
+        'ico':    _doc('#ff9900', '#cc7700', 'IC'),
+        // Media
+        'mp4':    _doc('#9c27b0', '#6a1b80', 'VD'),
+        'mp3':    _doc('#9c27b0', '#6a1b80', 'AU'),
+        'wav':    _doc('#9c27b0', '#6a1b80', 'AU'),
+        // Documents
+        'pdf':    _doc('#f40f02', '#c00000', 'PD'),
+        // Archives
+        'zip':    _doc('#9b9b9b', '#6f6f6f', 'ZP'),
+        'gz':     _doc('#9b9b9b', '#6f6f6f', 'GZ'),
+        'tar':    _doc('#9b9b9b', '#6f6f6f', 'TR'),
+        // Fonts
+        'woff':   _doc('#9b9b9b', '#6f6f6f', 'FT'),
+        'woff2':  _doc('#9b9b9b', '#6f6f6f', 'FT'),
+        'ttf':    _doc('#9b9b9b', '#6f6f6f', 'FT'),
+        // Misc
+        'lock':   _doc('#9b9b9b', '#6f6f6f', 'LK'),
+        'log':    _doc('#9b9b9b', '#6f6f6f', 'LG'),
+    }
+};
+
 function getFileIcon(fileName, isDirectory) {
-    if (isDirectory) return '📁';
-    const ext = fileName.split('.').pop().toLowerCase();
-    const iconMap = {
-        'js': '📄', 'json': '🔧', 'html': '🌐', 'css': '🎨', 'md': '📝',
-        'py': '🐍', 'txt': '📄', 'xml': '📄', 'sql': '🗃️'
-    };
-    return iconMap[ext] || '📄';
+    if (isDirectory) return FILE_ICONS.folder;
+    const lower = fileName.toLowerCase();
+    if (FILE_ICONS.byName[lower]) return FILE_ICONS.byName[lower];
+    const ext = lower.includes('.') ? lower.split('.').pop() : '';
+    return FILE_ICONS.byExt[ext] || (() => {
+        // Fallback: gray document with up to 3-char uppercase extension label
+        const label = ext ? ext.toUpperCase().slice(0, 3) : '?';
+        const n = label.length;
+        const fs = n <= 1 ? 6.5 : n === 2 ? 5.2 : 4.2;
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">` +
+               `<path d="M2 0h8l4 4v11H2z" fill="#858585"/>` +
+               `<path d="M10 0l4 4h-4z" fill="#606060"/>` +
+               `<text x="8" y="10" text-anchor="middle" dominant-baseline="middle" ` +
+               `font-size="${fs}" font-family="'Courier New',monospace" ` +
+               `font-weight="bold" fill="white" opacity="0.9">${label}</text>` +
+               `</svg>`;
+    })();
 }
 
 function getFileIconClass(fileName, isDirectory) {
@@ -200,7 +363,7 @@ async function createFile(fileName, content = '', template = '') {
         const data = { filePath: fileName, content: content };
         if (template) data.template = template;
         
-        const response = await fetch('/edit/creater/_api/file', {
+        const response = await fetch('/edit/creator/_api/file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -218,7 +381,7 @@ async function createFile(fileName, content = '', template = '') {
 
 async function deleteFile(filePath) {
     try {
-        const response = await fetch('/edit/creater/_api/file/' + filePath, {
+        const response = await fetch('/edit/creator/_api/file/' + filePath, {
             method: 'DELETE'
         });
         
@@ -233,7 +396,7 @@ async function deleteFile(filePath) {
 }
 async function deleteFolder(folderPath, recursive = false) {
     try {
-        const response = await fetch('/edit/creater/_api/folder', {
+        const response = await fetch('/edit/creator/_api/folder', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folderPath: folderPath, recursive: recursive })
@@ -250,7 +413,7 @@ async function deleteFolder(folderPath, recursive = false) {
 }
 async function renameItem(oldPath, newPath) {
     try {
-        const response = await fetch('/edit/creater/_api/rename', {
+        const response = await fetch('/edit/creator/_api/rename', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ oldPath: oldPath, newPath: newPath })
@@ -267,7 +430,7 @@ async function renameItem(oldPath, newPath) {
 }
 async function duplicateFile(sourcePath, targetPath) {
     try {
-        const response = await fetch('/edit/creater/_api/duplicate/file', {
+        const response = await fetch('/edit/creator/_api/duplicate/file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sourcePath: sourcePath, targetPath: targetPath })
@@ -284,7 +447,7 @@ async function duplicateFile(sourcePath, targetPath) {
 }
 async function duplicateFolder(sourcePath, targetPath) {
     try {
-        const response = await fetch('/edit/creater/_api/duplicate/folder', {
+        const response = await fetch('/edit/creator/_api/duplicate/folder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sourcePath: sourcePath, targetPath: targetPath })
@@ -301,7 +464,7 @@ async function duplicateFolder(sourcePath, targetPath) {
 }
 async function createFolder(folderName) {
     try {
-        const response = await fetch('/edit/creater/_api/folder', {
+        const response = await fetch('/edit/creator/_api/folder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folderPath: folderName })
@@ -500,167 +663,571 @@ function clearLongPressTimer() {
 
 let draggedElement = null;
 let draggedData = null;
+let currentDropTarget = null;
+let autoScrollRAF = null;
+
+function autoScrollOnDrag(e) {
+    const scrollContainer = document.querySelector('.explorer-content.active');
+    if (!scrollContainer) return;
+
+    const rect = scrollContainer.getBoundingClientRect();
+    const edgeSize = 40;
+    const maxSpeed = 8;
+    const cursorY = e.clientY;
+
+    let speed = 0;
+    if (cursorY < rect.top + edgeSize) {
+        speed = -maxSpeed * (1 - (cursorY - rect.top) / edgeSize);
+    } else if (cursorY > rect.bottom - edgeSize) {
+        speed = maxSpeed * (1 - (rect.bottom - cursorY) / edgeSize);
+    }
+
+    if (autoScrollRAF) cancelAnimationFrame(autoScrollRAF);
+
+    if (speed !== 0) {
+        (function scroll() {
+            scrollContainer.scrollTop += speed;
+            autoScrollRAF = requestAnimationFrame(scroll);
+        })();
+    }
+}
+
+function stopAutoScroll() {
+    if (autoScrollRAF) {
+        cancelAnimationFrame(autoScrollRAF);
+        autoScrollRAF = null;
+    }
+}
+
+// Multi-selection state
+let selectedFiles = new Set();
+let lastSelectedItem = null;
+let isMultiSelectMode = false;
+
+// Selection helper functions
+function toggleFileSelection(fileItem, path) {
+    if (selectedFiles.has(path)) {
+        selectedFiles.delete(path);
+        fileItem.classList.remove('selected');
+    } else {
+        selectedFiles.add(path);
+        fileItem.classList.add('selected');
+    }
+    updateMultiSelectMode();
+}
+
+function clearSelection() {
+    selectedFiles.clear();
+    document.querySelectorAll('.file-item.selected').forEach(item => {
+        item.classList.remove('selected');
+    });
+    updateMultiSelectMode();
+}
+
+function selectRange(startItem, endItem) {
+    clearSelection();
+
+    const allItems = Array.from(document.querySelectorAll('.file-item'));
+    const startIndex = allItems.indexOf(startItem);
+    const endIndex = allItems.indexOf(endItem);
+
+    if (startIndex === -1 || endIndex === -1) return;
+
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+
+    for (let i = minIndex; i <= maxIndex; i++) {
+        const item = allItems[i];
+        const path = item.getAttribute('data-path');
+        selectedFiles.add(path);
+        item.classList.add('selected');
+    }
+    updateMultiSelectMode();
+}
+
+function updateMultiSelectMode() {
+    // Update selected files based on active items
+    selectedFiles.clear();
+    document.querySelectorAll('.file-item.active').forEach(item => {
+        const path = item.getAttribute('data-path');
+        if (path) {
+            selectedFiles.add(path);
+        }
+    });
+
+    isMultiSelectMode = selectedFiles.size > 0;
+    updateSelectionStatus();
+}
+
+function updateSelectionStatus() {
+    // Remove existing status
+    const existingStatus = document.querySelector('.selection-status');
+    if (existingStatus) existingStatus.remove();
+
+    if (selectedFiles.size > 0) {
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'selection-status';
+        statusDiv.innerHTML = `
+            <span>${selectedFiles.size} item${selectedFiles.size !== 1 ? 's' : ''} selected</span>
+            <button class="clear-selection-btn">Clear</button>
+        `;
+
+        // Add event listener to clear button
+        statusDiv.querySelector('.clear-selection-btn').addEventListener('click', clearSelection);
+
+        const explorerHeader = document.querySelector('.explorer-header');
+        if (explorerHeader) {
+            explorerHeader.appendChild(statusDiv);
+        }
+    }
+}
+
+// Make clearSelection available globally for context menu
+window.clearSelection = clearSelection;
 
 // Drag start
 function onDragStart(e) {
+    console.log('=== onDragStart called ===', e.target);
+
+    // Simple text selection prevention
+    window.getSelection().removeAllRanges();
+
     const fileItem = e.target.closest('.file-item');
-    if (!fileItem) return;
-    
-    draggedElement = fileItem;
-    draggedData = {
-        path: fileItem.getAttribute('data-path'),
-        isDirectory: fileItem.getAttribute('data-is-directory') === 'true'
-    };
-    
-    // Apply style to dragging element
-    fileItem.classList.add('dragging');
-    
-    // Set drag data
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', draggedData.path);
+    if (!fileItem) {
+        console.log('No file item found for drag');
+        return;
+    }
+
+    const path = fileItem.getAttribute('data-path');
+    const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
+
+    console.log('Starting drag for:', { path, isDirectory });
+
+    // Get all active/selected items
+    const activeItems = document.querySelectorAll('.file-item.active');
+    const activeCount = activeItems.length;
+
+    // Check if current item is selected
+    const isItemActive = fileItem.classList.contains('active');
+
+    if (activeCount > 1 && isItemActive) {
+        // Dragging multiple selected files
+        const activePaths = [];
+        activeItems.forEach(item => {
+            const itemPath = item.getAttribute('data-path');
+            activePaths.push(itemPath);
+            item.classList.add('dragging');
+        });
+
+        draggedElement = fileItem;
+        draggedData = {
+            paths: activePaths,
+            isMultiple: true
+        };
+
+        console.log('Dragging multiple items:', draggedData.paths);
+    } else {
+        // Single file drag or dragging non-selected item
+        // Clear any existing selection
+        activeItems.forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // Select and drag only this item
+        fileItem.classList.add('active');
+        fileItem.classList.add('dragging');
+
+        draggedElement = fileItem;
+        draggedData = {
+            paths: [path],
+            isMultiple: false
+        };
+
+        console.log('Dragging single item:', path);
+    }
+
+    // Set drag data - simplified approach
+    if (e.dataTransfer) {
+        console.log('Setting dataTransfer data...');
+        try {
+            // Use a simple text format that won't conflict
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', 'internal-file-move');
+            console.log('DataTransfer set successfully');
+
+            // Set custom drag image for multiple files
+            if (draggedData.isMultiple && draggedData.paths.length > 1) {
+                const dragImage = document.createElement('div');
+                dragImage.className = 'drag-image-multi';
+                dragImage.innerHTML = `<span class="drag-count">${draggedData.paths.length} items</span>`;
+                dragImage.style.cssText = `
+                    position: absolute;
+                    top: -1000px;
+                    background: #007acc;
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                `;
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, 0, 0);
+                setTimeout(() => dragImage.remove(), 0);
+            }
+        } catch (error) {
+            console.error('Error setting dataTransfer:', error);
+        }
+    } else {
+        console.log('No dataTransfer available');
+    }
+
+    console.log('=== Drag start complete ===', { draggedData });
 }
 
-// Drag over (check if drop is allowed)
-function onDragOver(e) {
-    e.preventDefault();
-    
-    // Only for desktop (if dataTransfer exists)
-    if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'none';
+function updateDropTarget(newTarget) {
+    if (currentDropTarget === newTarget) return;
+    if (currentDropTarget) {
+        currentDropTarget.classList.remove('drag-over');
+        currentDropTarget.classList.remove('root-drop-active');
     }
-    
-    if (!draggedData) return;
-    
+    currentDropTarget = newTarget;
+    if (currentDropTarget) {
+        if (currentDropTarget.classList.contains('file-tree-container')) {
+            currentDropTarget.classList.add('root-drop-active');
+        } else {
+            currentDropTarget.classList.add('drag-over');
+        }
+    }
+}
+
+// Drag over (check if drop is allowed + visual feedback)
+function onDragOver(e) {
+    if (draggedData) {
+        console.log('=== Allowing drop ===');
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
     const fileItem = e.target.closest('.file-item');
     const container = e.target.closest('.file-tree-container');
-    
+
     if (fileItem) {
+        if (fileItem === draggedElement) {
+            updateDropTarget(null);
+            return;
+        }
+
         const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
         const targetPath = fileItem.getAttribute('data-path');
-        
-        // Allow drop only if folder, not self, and not a descendant
-        if (isDirectory && 
-            targetPath !== draggedData.path && 
-            !isDescendantPath(targetPath, draggedData.path)) {
+
+        // Check if valid drop target for all dragged files
+        if (isDirectory && draggedData && draggedData.paths) {
+            let isValidTarget = true;
+            for (const dragPath of draggedData.paths) {
+                if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+                    isValidTarget = false;
+                    break;
+                }
+            }
+
+            if (isValidTarget) {
+                // Add visual feedback for valid drop target
+                updateDropTarget(fileItem);
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = 'move';
+                }
+            } else {
+                updateDropTarget(null);
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = 'none';
+                }
+            }
+        } else if (!isDirectory) {
+            // Can't drop on a file
+            updateDropTarget(null);
             if (e.dataTransfer) {
-                e.dataTransfer.dropEffect = 'move';
+                e.dataTransfer.dropEffect = 'none';
             }
         }
-    } else if (container) {
-        // Drop on container (move to root)
+    } else if (container && draggedData) {
+        // Hovering over the container (root level drop)
+        updateDropTarget(container);
         if (e.dataTransfer) {
             e.dataTransfer.dropEffect = 'move';
         }
+    } else {
+        updateDropTarget(null);
     }
 }
+
+// Track the current drag over element
+let currentDragOverElement = null;
+let dragEnterCounter = 0;
 
 // Drag enter (visual feedback)
 function onDragEnter(e) {
-    e.preventDefault();
-    
     if (!draggedData) return;
-    
-    const fileItem = e.target.closest('.file-item');
-    const container = e.target.closest('.file-tree-container');
-    
-    if (fileItem) {
-        const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
-        const targetPath = fileItem.getAttribute('data-path');
-        
-        if (isDirectory && 
-            targetPath !== draggedData.path && 
-            !isDescendantPath(targetPath, draggedData.path)) {
-            fileItem.classList.add('drag-over');
+
+    e.preventDefault();
+    // Don't stop propagation for internal drags
+
+    dragEnterCounter++;
+
+    // Find the closest directory item (including parent directories)
+    let targetElement = e.target;
+    let directoryItem = null;
+
+    // Check if we're over a file item or its children
+    while (targetElement && targetElement !== document.body) {
+        if (targetElement.classList && targetElement.classList.contains('file-item')) {
+            const isDirectory = targetElement.getAttribute('data-is-directory') === 'true';
+            if (isDirectory) {
+                directoryItem = targetElement;
+                break;
+            }
         }
-    } else if (container) {
-        container.classList.add('root-drop-active');
+        // Also check if we're over the file tree container (for root drops)
+        if (targetElement.id === 'file-tree-container' || targetElement.id === 'file-tree') {
+            // Treat the container as the root directory
+            directoryItem = targetElement;
+            directoryItem.setAttribute('data-path', '.');
+            directoryItem.setAttribute('data-is-directory', 'true');
+            break;
+        }
+        targetElement = targetElement.parentElement;
+    }
+
+    // If we found a directory, check if it's valid
+    if (directoryItem) {
+        const targetPath = directoryItem.getAttribute('data-path');
+
+        if (draggedData.paths) {
+            let isValidTarget = true;
+            for (const dragPath of draggedData.paths) {
+                if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+                    isValidTarget = false;
+                    break;
+                }
+            }
+
+            if (isValidTarget) {
+                // Remove previous highlight
+                if (currentDragOverElement && currentDragOverElement !== directoryItem) {
+                    currentDragOverElement.classList.remove('drag-over');
+                }
+                directoryItem.classList.add('drag-over');
+                currentDragOverElement = directoryItem;
+            }
+        }
+    } else {
+        // Check for container
+        const container = e.target.closest('.file-tree-container');
+        if (container) {
+            container.classList.add('root-drop-active');
+        }
     }
 }
 
-// Drag leave (remove visual feedback)
+// Drag leave (handle leaving the container)
 function onDragLeave(e) {
-    const fileItem = e.target.closest('.file-item');
-    const container = e.target.closest('.file-tree-container');
-    
-    if (fileItem) {
-        fileItem.classList.remove('drag-over');
-    } else if (container) {
-        container.classList.remove('root-drop-active');
+    if (!draggedData) return;
+
+    e.preventDefault();
+    // Don't stop propagation for internal drags
+
+    dragEnterCounter--;
+
+    // Only remove highlight when completely leaving the element
+    if (dragEnterCounter <= 0) {
+        dragEnterCounter = 0;
+
+        if (currentDragOverElement) {
+            currentDragOverElement.classList.remove('drag-over');
+            currentDragOverElement = null;
+        }
+
+        const container = e.target.closest('.file-tree-container');
+        if (container) {
+            container.classList.remove('root-drop-active');
+        }
     }
 }
 
 // Drop handling
 function onDrop(e) {
-    e.preventDefault();
-    
+    console.log('🚀🚀🚀 DROP EVENT TRIGGERED!!! 🚀🚀🚀');
+
     if (!draggedData) {
+        console.log('❌ No drag data');
+        return;
+    }
+
+    console.log('✅ Processing drop...');
+    e.preventDefault();
+
+    console.log('=== Drop accepted - have draggedData ===', { draggedData });
+
+    // Find the target directory (including parent directories)
+    let targetElement = e.target;
+    let directoryItem = null;
+    let targetPath = '.';
+
+    // Look for a directory element in the hierarchy
+    while (targetElement && targetElement !== document.body) {
+        if (targetElement.classList && targetElement.classList.contains('file-item')) {
+            const isDirectory = targetElement.getAttribute('data-is-directory') === 'true';
+            if (isDirectory) {
+                directoryItem = targetElement;
+                break;
+            }
+        }
+        // Also check if we're over the file tree container (for root drops)
+        if (targetElement.id === 'file-tree-container' || targetElement.id === 'file-tree') {
+            // Treat as root directory drop
+            targetPath = '.';
+            console.log('Drop on root container detected');
+            break;
+        }
+        targetElement = targetElement.parentElement;
+    }
+
+    // Determine the actual target path
+    if (directoryItem) {
+        targetPath = directoryItem.getAttribute('data-path');
+    }
+
+    console.log('Drop target determined:', { targetPath, draggedPaths: draggedData.paths, directoryItem });
+
+    // Check if valid drop target
+    let isValidTarget = true;
+    if (draggedData && draggedData.paths) {
+        // Check if any of the dragged items would create invalid moves
+        for (const dragPath of draggedData.paths) {
+            if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+                isValidTarget = false;
+                break;
+            }
+        }
+    }
+
+    if (!isValidTarget) {
+        console.log('Invalid drop target - cannot drop into itself or descendants');
         cleanupDrag();
         return;
     }
-    
-    const fileItem = e.target.closest('.file-item');
-    const container = e.target.closest('.file-tree-container');
-    
-    let targetPath = '.';
-    
-    if (fileItem) {
-        const isDirectory = fileItem.getAttribute('data-is-directory') === 'true';
-        const target = fileItem.getAttribute('data-path');
-        
-        if (isDirectory && 
-            target !== draggedData.path && 
-            !isDescendantPath(target, draggedData.path)) {
-            targetPath = target;
-        } else {
-            cleanupDrag();
-            return;
-        }
+
+    console.log(`Moving ${draggedData.paths.length} items to:`, targetPath);
+
+    // Perform multiple moves
+    if (draggedData.paths && draggedData.paths.length > 0) {
+        // Use async to wait for the moves to complete
+        performMultipleMove(draggedData.paths, targetPath).then(() => {
+            console.log('All moves completed');
+            // Clear selection after successful move
+            clearSelection();
+            // Refresh the file tree
+            refreshFileTree();
+        }).catch((error) => {
+            console.error('Error during multiple move:', error);
+            // Let original system handle error notifications
+        });
     }
-    
-    try {
-        performMove(draggedData.path, targetPath, draggedData.isDirectory)
-            .catch((error) => {
-                console.error('File move error:', error);
-                showMessage(`File move error: ${error.message}`, 'error');
-            });
-    } catch (error) {
-        console.error('Drop handling error:', error);
-        showMessage(`Drop handling error: ${error.message}`, 'error');
-    }
-    
+
     cleanupDrag();
 }
 
 // Drag end (cleanup)
 function onDragEnd(e) {
+    // Re-enable text selection
+    document.body.style.userSelect = '';
+    document.body.style.webkitUserSelect = '';
+
     cleanupDrag();
 }
 
 // Cleanup drag state
 function cleanupDrag() {
     try {
-        if (draggedElement) {
-            draggedElement.classList.remove('dragging');
-        }
-        
+        // Remove dragging style from all elements
+        document.querySelectorAll('.file-item.dragging').forEach(item => {
+            item.classList.remove('dragging');
+        });
+
         // Remove all visual feedback
         const dragOverElements = document.querySelectorAll('.drag-over');
         dragOverElements.forEach(el => {
             el.classList.remove('drag-over');
         });
-        
+
         const rootDropElements = document.querySelectorAll('.root-drop-active');
         rootDropElements.forEach(el => {
             el.classList.remove('root-drop-active');
         });
-        
+
+        // Reset counters and references
+        dragEnterCounter = 0;
+        currentDragOverElement = null;
         draggedElement = null;
         draggedData = null;
+
+        // Re-enable text selection
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
     } catch (error) {
         console.error('Drag cleanup error:', error);
         // Initialize state even if error occurs
+        dragEnterCounter = 0;
+        currentDragOverElement = null;
         draggedElement = null;
         draggedData = null;
+    }
+}
+
+// New function to handle multiple file moves
+async function performMultipleMove(sourcePaths, targetPath) {
+    const totalFiles = sourcePaths.length;
+    let successCount = 0;
+    let failedFiles = [];
+
+    console.log('Starting multiple move:', { sourcePaths, targetPath });
+    // Remove the initial "Moving..." message to reduce toast spam
+
+    for (const sourcePath of sourcePaths) {
+        try {
+            const fileName = sourcePath.split('/').pop();
+
+            // Use a more reliable selector
+            let fileItem = null;
+            const allFileItems = document.querySelectorAll('.file-item');
+            for (const item of allFileItems) {
+                if (item.getAttribute('data-path') === sourcePath) {
+                    fileItem = item;
+                    break;
+                }
+            }
+
+            const isDirectory = fileItem ? fileItem.getAttribute('data-is-directory') === 'true' : false;
+
+            console.log(`Moving ${fileName} from ${sourcePath} to ${targetPath}, isDirectory: ${isDirectory}`);
+            await performMove(sourcePath, targetPath, isDirectory);
+            successCount++;
+
+            console.log(`Moved ${fileName} successfully (${successCount}/${totalFiles})`);
+        } catch (error) {
+            console.error(`Failed to move ${sourcePath}:`, error);
+            failedFiles.push(sourcePath.split('/').pop());
+        }
+    }
+
+    // Just log results - let original system handle notifications
+    if (successCount === totalFiles) {
+        console.log(`Successfully moved ${totalFiles} item${totalFiles > 1 ? 's' : ''}`);
+        return Promise.resolve();
+    } else if (successCount > 0) {
+        console.log(`Moved ${successCount}/${totalFiles} items. Failed: ${failedFiles.join(', ')}`);
+        return Promise.resolve();
+    } else {
+        console.error(`Failed to move items: ${failedFiles.join(', ')}`);
+        return Promise.reject(new Error(`Failed to move items: ${failedFiles.join(', ')}`));
     }
 }
 
@@ -707,7 +1274,7 @@ async function performMove(sourcePath, targetDirectoryPath, isDirectory) {
         showMoveProgress(sourcePath, targetDirectoryPath);
         
         // Call the rename API (which handles both rename and move)
-        const response = await fetch('/edit/creater/_api/rename', {
+        const response = await fetch('/edit/creator/_api/rename', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -741,18 +1308,22 @@ async function performMove(sourcePath, targetDirectoryPath, isDirectory) {
             }
             
             // Update current file path if it was moved
-            if (state.activeFilePath && (state.activeFilePath === sourcePath || state.activeFilePath.startsWith(sourcePath + '/'))) {
-                const newFileName = state.activeFilePath.replace(sourcePath, newPath);
-                state.activeFilePath = newFileName;
+            try {
+                if (state && state.activeFilePath && (state.activeFilePath === sourcePath || state.activeFilePath.startsWith(sourcePath + '/'))) {
+                    const newFileName = state.activeFilePath.replace(sourcePath, newPath);
+                    if (state.hasOwnProperty('activeFilePath')) {
+                        state.activeFilePath = newFileName;
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not update activeFilePath:', error.message);
             }
             
             // Refresh the file tree
             await refreshFileTree();
-            
-            showMoveMessage(
-                `Successfully moved ${isDirectory ? 'folder' : 'file'} "${fileName}" to "${targetDirectoryPath}".`,
-                'success'
-            );
+
+            // Individual success messages removed to reduce toast spam
+            console.log(`Successfully moved ${isDirectory ? 'folder' : 'file'} "${fileName}" to "${targetDirectoryPath}"`);
         } else {
             throw new Error(result.error || 'Received failure response from API');
         }
@@ -760,34 +1331,24 @@ async function performMove(sourcePath, targetDirectoryPath, isDirectory) {
     } catch (error) {
         console.error('performMove error:', error);
         hideMoveProgress();
-        showMoveMessage(`File move failed: ${error.message}`, 'error');
+        // Let original system handle error notifications
     }
 }
 
 function showMoveProgress(sourcePath, targetPath) {
-    const progressDiv = document.createElement('div');
-    progressDiv.id = 'move-progress';
-    progressDiv.className = 'move-progress';
-    progressDiv.innerHTML = `
-        <div class="move-progress-content">
-            <div class="move-progress-text">Moving "${sourcePath}" to "${targetPath}"...</div>
-            <div class="move-progress-spinner"></div>
-        </div>
-    `;
-    document.querySelector('.explorer-content').appendChild(progressDiv);
+    // Progress messages removed to reduce toast spam - now only shown in console
+    const fileName = sourcePath.split('/').pop();
+    const targetName = targetPath === '.' ? 'root' : targetPath.split('/').pop();
+    console.log(`Moving "${fileName}" to "${targetName}"...`);
 }
 
 function hideMoveProgress() {
-    const progressDiv = document.getElementById('move-progress');
-    if (progressDiv) progressDiv.remove();
+    // Using the new message system, auto-hide is handled
 }
 
 function showMoveMessage(message, type = 'success') {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `move-message move-message-${type}`;
-    messageDiv.textContent = message;
-    document.querySelector('.explorer-content').appendChild(messageDiv);
-    setTimeout(() => { messageDiv.remove(); }, 3000);
+    // Disabled to avoid conflicting with original notifications
+    console.log(`Move message (${type}):`, message);
 }
 
 
@@ -927,16 +1488,16 @@ function attachFileTreeEvents() {
     fileTree.removeEventListener('dragleave', onDragLeave);
     fileTree.removeEventListener('drop', onDrop);
     fileTree.removeEventListener('dragend', onDragEnd);
-    
+
     // Remove mobile touch event listeners
     fileTree.removeEventListener('touchstart', onTouchStart);
     fileTree.removeEventListener('touchmove', onTouchMove);
     fileTree.removeEventListener('touchend', onTouchEnd);
-    
-    container.removeEventListener('dragover', onDragOver);
-    container.removeEventListener('dragenter', onDragEnter);
-    container.removeEventListener('dragleave', onDragLeave);
-    container.removeEventListener('drop', onDrop);
+
+    container.removeEventListener('dragover', onDragOver, true);
+    container.removeEventListener('dragenter', onDragEnter, true);
+    container.removeEventListener('dragleave', onDragLeave, true);
+    container.removeEventListener('drop', onDrop, true);
     
     // Add event listeners for file tree
     fileTree.addEventListener('click', handleTreeClick);
@@ -949,18 +1510,15 @@ function attachFileTreeEvents() {
         fileTree.addEventListener('touchmove', onTouchMove, { passive: false });
         fileTree.addEventListener('touchend', onTouchEnd, { passive: false });
     } else {
+        // Simple drag/drop setup
+        console.log('=== Setting up SIMPLE drag/drop ===');
+
         fileTree.addEventListener('dragstart', onDragStart);
         fileTree.addEventListener('dragover', onDragOver);
-        fileTree.addEventListener('dragenter', onDragEnter);
-        fileTree.addEventListener('dragleave', onDragLeave);
         fileTree.addEventListener('drop', onDrop);
         fileTree.addEventListener('dragend', onDragEnd);
-        
-        // Add event listeners for container
-        container.addEventListener('dragover', onDragOver);
-        container.addEventListener('dragenter', onDragEnter);
-        container.addEventListener('dragleave', onDragLeave);
-        container.addEventListener('drop', onDrop);
+
+        console.log('=== Simple drag/drop ready ===');
     }
     
     // Set tabindex for keyboard navigation on all file items
@@ -1332,61 +1890,253 @@ async function createFolderInFolder(folderPath) {
 // --- Upload/drag-and-drop ---
 
 function setupDragAndDrop() {
-    const explorerContent = document.querySelector('.explorer-content');
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        explorerContent.addEventListener(eventName, preventDefaults, false);
-        document.body.addEventListener(eventName, preventDefaults, false);
-    });
-    ['dragenter', 'dragover'].forEach(eventName => {
-        explorerContent.addEventListener(eventName, highlight, false);
-    });
-    ['dragleave', 'drop'].forEach(eventName => {
-        explorerContent.addEventListener(eventName, unhighlight, false);
-    });
-    explorerContent.addEventListener('drop', handleDrop, false);
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-    function highlight() { explorerContent.classList.add('drag-over'); }
-    function unhighlight() { explorerContent.classList.remove('drag-over'); }
-    function handleDrop(e) {
+    console.log('=== External drag/drop setup DISABLED for testing ===');
+    return; // COMPLETELY DISABLE external handlers for now
+
+    // DISABLED body handlers for testing
+    console.log('=== Body level handlers DISABLED ===');
+
+    // Global handlers DISABLED for testing
+
+
+    function highlight() {
+        explorerContent.classList.add('drag-over');
+        // Add visual feedback message
+        if (!document.querySelector('.drop-hint')) {
+            const hint = document.createElement('div');
+            hint.className = 'drop-hint';
+            hint.textContent = 'Drop files here to upload';
+            explorerContent.appendChild(hint);
+        }
+    }
+
+    function unhighlight() {
+        explorerContent.classList.remove('drag-over');
+        // Remove visual feedback message
+        const hint = document.querySelector('.drop-hint');
+        if (hint) {
+            hint.remove();
+        }
+    }
+
+    async function handleDrop(e) {
+        console.log('=== External handleDrop called ===', {
+            draggedData,
+            hasDraggedData: !!draggedData
+        });
+
+        // Check if this is an internal drag (let onDrop handle it)
+        if (draggedData) {
+            console.log('=== External drop handler: ignoring internal drag, not preventing defaults ===');
+            // DON'T prevent defaults - let the internal handler process it
+            return; // Let the onDrop function handle internal moves
+        }
+
+        // Only prevent defaults for external drops
+        e.preventDefault();
+        e.stopPropagation();
+
+        dragCounter = 0; // Reset counter on drop
+        unhighlight();
+
         const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFileUpload(files);
+        const items = dt.items;
+        const files = [];
+
+        // Handle both files and folders
+        if (items) {
+            // Use DataTransferItemList interface when available
+            const entries = [];
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : item.getAsFile();
+                    if (entry) {
+                        entries.push(entry);
+                    }
+                }
+            }
+
+            // Process entries (could be files or directories)
+            for (const entry of entries) {
+                if (entry.isFile || entry instanceof File) {
+                    // It's a file
+                    if (entry.file) {
+                        await new Promise((resolve) => {
+                            entry.file((file) => {
+                                files.push(file);
+                                resolve();
+                            });
+                        });
+                    } else {
+                        files.push(entry);
+                    }
+                } else if (entry.isDirectory) {
+                    // It's a directory - recursively get all files
+                    const dirFiles = await readDirectory(entry);
+                    files.push(...dirFiles);
+                }
+            }
+        } else {
+            // Fallback to FileList
+            for (let i = 0; i < dt.files.length; i++) {
+                files.push(dt.files[i]);
+            }
+        }
+
+        if (files.length > 0) {
+            handleFileUpload(files);
+        }
+    }
+
+    // Helper function to recursively read directory contents
+    async function readDirectory(dirEntry, path = '') {
+        const files = [];
+        const reader = dirEntry.createReader();
+
+        // Read entries in batches
+        let entries = [];
+        let batch;
+        do {
+            batch = await new Promise((resolve) => {
+                reader.readEntries(resolve);
+            });
+            entries = entries.concat(batch);
+        } while (batch.length > 0);
+
+        for (const entry of entries) {
+            const entryPath = path ? `${path}/${entry.name}` : entry.name;
+
+            if (entry.isFile) {
+                const file = await new Promise((resolve) => {
+                    entry.file((file) => {
+                        // Preserve the relative path
+                        Object.defineProperty(file, 'webkitRelativePath', {
+                            value: `${dirEntry.name}/${entryPath}`,
+                            writable: false
+                        });
+                        resolve(file);
+                    });
+                });
+                files.push(file);
+            } else if (entry.isDirectory) {
+                const subFiles = await readDirectory(entry, entryPath);
+                // Update paths for nested files
+                subFiles.forEach(file => {
+                    if (!file.webkitRelativePath.startsWith(dirEntry.name)) {
+                        Object.defineProperty(file, 'webkitRelativePath', {
+                            value: `${dirEntry.name}/${file.webkitRelativePath || file.name}`,
+                            writable: false
+                        });
+                    }
+                });
+                files.push(...subFiles);
+            }
+        }
+
+        return files;
     }
 }
-function handleFileUpload(files) {
+async function handleFileUpload(files) {
     if (!files || files.length === 0) {
         return;
     }
-    
+
+    // Show initial upload message
+    const fileCount = files.length;
+    showUploadMessage(`Processing ${fileCount} file${fileCount > 1 ? 's' : ''}...`, 'info');
+
     const filesToUpload = [];
-    let processedCount = 0;
-    
-    Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const base64Content = e.target.result.split(',')[1];
-                const fileName = file.webkitRelativePath || file.name;
-                
-                filesToUpload.push({ fileName: fileName, fileContent: base64Content });
-                processedCount++;
-                
-                if (processedCount === files.length) {
-                    uploadFiles(filesToUpload);
-                }
-            } catch (error) {
-                console.error('Error processing file:', error);
-                showUploadMessage(`File processing error: ${error.message}`, 'error');
+    const errors = [];
+
+    // Process files in parallel with Promise.all
+    const filePromises = Array.from(files).map((file, index) => {
+        return new Promise((resolve, reject) => {
+            // Skip files larger than 50MB for better performance
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            if (file.size > maxSize) {
+                errors.push(`${file.name}: File too large (max 50MB)`);
+                resolve(null);
+                return;
             }
-        };
-        
-        reader.onerror = function(error) {
-            console.error('FileReader error:', error);
-            showUploadMessage(`File read error: ${error.message}`, 'error');
-        };
-        
-        reader.readAsDataURL(file);
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const base64Content = e.target.result.split(',')[1];
+                    const fileName = file.webkitRelativePath || file.name;
+
+                    // Check for duplicate file names and rename if necessary
+                    let finalFileName = fileName;
+                    let counter = 1;
+                    while (filesToUpload.some(f => f.fileName === finalFileName)) {
+                        const nameParts = fileName.split('.');
+                        if (nameParts.length > 1) {
+                            const ext = nameParts.pop();
+                            finalFileName = `${nameParts.join('.')}_${counter}.${ext}`;
+                        } else {
+                            finalFileName = `${fileName}_${counter}`;
+                        }
+                        counter++;
+                    }
+
+                    resolve({ fileName: finalFileName, fileContent: base64Content });
+                } catch (error) {
+                    console.error(`Error processing file ${file.name}:`, error);
+                    errors.push(`${file.name}: ${error.message}`);
+                    resolve(null);
+                }
+            };
+
+            reader.onerror = function(error) {
+                console.error(`FileReader error for ${file.name}:`, error);
+                errors.push(`${file.name}: Failed to read file`);
+                resolve(null);
+            };
+
+            // Add timeout for file reading
+            const timeout = setTimeout(() => {
+                reader.abort();
+                errors.push(`${file.name}: Reading timeout`);
+                resolve(null);
+            }, 30000); // 30 second timeout per file
+
+            reader.onloadend = () => {
+                clearTimeout(timeout);
+            };
+
+            reader.readAsDataURL(file);
+        });
     });
+
+    try {
+        const results = await Promise.all(filePromises);
+
+        // Filter out null results (failed files)
+        results.forEach(result => {
+            if (result) {
+                filesToUpload.push(result);
+            }
+        });
+
+        // Show errors if any
+        if (errors.length > 0) {
+            showUploadMessage(`Failed to process ${errors.length} file(s). Check console for details.`, 'error');
+            console.error('File processing errors:', errors);
+        }
+
+        // Upload successfully processed files
+        if (filesToUpload.length > 0) {
+            showUploadMessage(`Uploading ${filesToUpload.length} file${filesToUpload.length > 1 ? 's' : ''}...`, 'info');
+            await uploadFiles(filesToUpload);
+        } else {
+            showUploadMessage('No files to upload', 'warning');
+        }
+    } catch (error) {
+        console.error('Error processing files:', error);
+        showUploadMessage(`Failed to process files: ${error.message}`, 'error');
+    }
 }
 async function uploadFiles(files, targetPath = null) {
     const uploadPath = targetPath || getCurrentDirectory();
@@ -1420,30 +2170,204 @@ async function uploadFiles(files, targetPath = null) {
         showUploadMessage(`Upload failed: ${error.message}`, 'error');
     }
 }
-function showUploadProgress(fileCount) {
+let uploadProgressContainer = null;
+let uploadProgressTimeout = null;
+
+function showUploadProgress(fileCount, currentFile = 0) {
+    // Remove existing progress container if any
+    if (uploadProgressContainer) {
+        uploadProgressContainer.remove();
+    }
+
     const progressDiv = document.createElement('div');
     progressDiv.id = 'upload-progress';
-    progressDiv.className = 'upload-progress';
+    progressDiv.className = 'upload-progress-container';
+
+    const percentage = fileCount > 0 ? Math.round((currentFile / fileCount) * 100) : 0;
+
     progressDiv.innerHTML = `
-        <div class="upload-progress-content">
-            <div class="upload-progress-text">Uploading ${fileCount} files...</div>
-            <div class="upload-progress-bar">
-                <div class="upload-progress-fill"></div>
-            </div>
+        <div class="upload-progress-header">
+            <span class="upload-progress-title">
+                <i class="codicon codicon-cloud-upload"></i>
+                Uploading ${currentFile}/${fileCount} file${fileCount !== 1 ? 's' : ''}
+            </span>
+            <button class="upload-progress-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
         </div>
+        <div class="upload-progress-bar">
+            <div class="upload-progress-fill" style="width: ${percentage}%"></div>
+        </div>
+        <div class="upload-progress-info">${percentage}% complete</div>
     `;
-    document.querySelector('.explorer-content').appendChild(progressDiv);
+
+    document.body.appendChild(progressDiv);
+    uploadProgressContainer = progressDiv;
+
+    // Auto-hide after upload completes
+    if (percentage === 100) {
+        uploadProgressTimeout = setTimeout(() => {
+            hideUploadProgress();
+        }, 2000);
+    }
 }
+
+function updateUploadProgress(fileCount, currentFile) {
+    if (!uploadProgressContainer) {
+        showUploadProgress(fileCount, currentFile);
+        return;
+    }
+
+    const percentage = Math.round((currentFile / fileCount) * 100);
+    const progressFill = uploadProgressContainer.querySelector('.upload-progress-fill');
+    const progressInfo = uploadProgressContainer.querySelector('.upload-progress-info');
+    const progressTitle = uploadProgressContainer.querySelector('.upload-progress-title');
+
+    if (progressFill) {
+        progressFill.style.width = `${percentage}%`;
+    }
+    if (progressInfo) {
+        progressInfo.textContent = `${percentage}% complete`;
+    }
+    if (progressTitle) {
+        progressTitle.innerHTML = `
+            <i class="codicon codicon-cloud-upload"></i>
+            Uploading ${currentFile}/${fileCount} file${fileCount !== 1 ? 's' : ''}
+        `;
+    }
+
+    // Auto-hide when complete
+    if (percentage === 100) {
+        uploadProgressTimeout = setTimeout(() => {
+            hideUploadProgress();
+        }, 2000);
+    }
+}
+
 function hideUploadProgress() {
-    const progressDiv = document.getElementById('upload-progress');
-    if (progressDiv) progressDiv.remove();
+    if (uploadProgressTimeout) {
+        clearTimeout(uploadProgressTimeout);
+        uploadProgressTimeout = null;
+    }
+    if (uploadProgressContainer) {
+        // Add fade-out animation
+        uploadProgressContainer.style.animation = 'slide-down 0.3s ease';
+        setTimeout(() => {
+            if (uploadProgressContainer) {
+                uploadProgressContainer.remove();
+                uploadProgressContainer = null;
+            }
+        }, 300);
+    }
 }
+
+let messageQueue = [];
+let messageContainer = null;
+
 function showUploadMessage(message, type = 'success') {
+    // Create message container if it doesn't exist
+    if (!messageContainer) {
+        messageContainer = document.createElement('div');
+        messageContainer.className = 'upload-messages-container';
+        messageContainer.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 350px;
+        `;
+        document.body.appendChild(messageContainer);
+    }
+
     const messageDiv = document.createElement('div');
     messageDiv.className = `upload-message upload-message-${type}`;
-    messageDiv.textContent = message;
-    document.querySelector('.explorer-content').appendChild(messageDiv);
-    setTimeout(() => { messageDiv.remove(); }, 3000);
+
+    // Choose icon based on type
+    const icons = {
+        success: '✓',
+        error: '✗',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+    const icon = icons[type] || icons.info;
+
+    messageDiv.innerHTML = `
+        <span class="upload-message-icon">${icon}</span>
+        <span class="upload-message-text">${message}</span>
+        <button class="upload-message-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+
+    // Style the message
+    const colors = {
+        success: 'linear-gradient(135deg, #28a745, #20c997)',
+        error: 'linear-gradient(135deg, #dc3545, #ff6b6b)',
+        warning: 'linear-gradient(135deg, #ffc107, #ffb347)',
+        info: 'linear-gradient(135deg, #17a2b8, #3498db)'
+    };
+
+    messageDiv.style.cssText = `
+        background: ${colors[type]};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: slide-in 0.3s ease;
+        position: relative;
+        min-width: 250px;
+    `;
+
+    const iconSpan = messageDiv.querySelector('.upload-message-icon');
+    if (iconSpan) {
+        iconSpan.style.cssText = `
+            font-size: 16px;
+            font-weight: bold;
+        `;
+    }
+
+    const textSpan = messageDiv.querySelector('.upload-message-text');
+    if (textSpan) {
+        textSpan.style.cssText = `
+            flex: 1;
+        `;
+    }
+
+    const closeBtn = messageDiv.querySelector('.upload-message-close');
+    if (closeBtn) {
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        `;
+        closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+        closeBtn.onmouseout = () => closeBtn.style.opacity = '0.8';
+    }
+
+    messageContainer.appendChild(messageDiv);
+
+    // Auto-remove after timeout
+    const timeout = type === 'error' ? 5000 : 3000;
+    setTimeout(() => {
+        messageDiv.style.animation = 'slide-out 0.3s ease';
+        setTimeout(() => {
+            messageDiv.remove();
+            // Remove container if empty
+            if (messageContainer && messageContainer.children.length === 0) {
+                messageContainer.remove();
+                messageContainer = null;
+            }
+        }, 300);
+    }, timeout);
 }
 function getCurrentDirectory() {
     return '.';
@@ -1512,7 +2436,7 @@ function handleFileUploadToFolder(files, targetPath) {
                     const newFolderPath = targetPath === '.' ? folderName : `${targetPath}/${folderName}`;
                     
                     // Create the folder first
-                    fetch('/edit/creater/_api/folder', {
+                    fetch('/edit/creator/_api/folder', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ folderPath: newFolderPath })

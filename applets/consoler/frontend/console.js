@@ -3,7 +3,7 @@
  * Handles real-time console log monitoring and filtering
  */
 
-import { inject as injectNavigater } from '/view/applets/navigater/frontend/navigater.js';
+import { inject as injectNavigator } from '/view/applets/navigator/frontend/navigator.js';
 
 class ConsolerApp {
     constructor() {
@@ -235,6 +235,6 @@ class ConsolerApp {
 
 
 const consoler = new ConsolerApp();
-injectNavigater('consoler');
+injectNavigator('consoler');
 
 export default consoler;

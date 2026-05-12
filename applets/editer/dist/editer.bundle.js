@@ -105,14 +105,14 @@ function isInIframe() {
     return true;
   }
 }
-function loadNavigaterCSS() {
-  if (document.querySelector('link[href*="navigater.css"]')) {
+function loadNavigatorCSS() {
+  if (document.querySelector('link[href*="navigator.css"]')) {
     return;
   }
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.type = "text/css";
-  link.href = "/view/applets/navigater/frontend/navigater.css";
+  link.href = "/view/applets/navigator/frontend/navigator.css";
   document.head.appendChild(link);
 }
 let cachedEnv = null;
@@ -120,7 +120,7 @@ function getEnvironment() {
   return __async(this, null, function* () {
     if (cachedEnv !== null) return cachedEnv;
     try {
-      const res = yield fetch("/navigater/env");
+      const res = yield fetch("/navigator/env");
       if (!res.ok) return "user";
       const data = yield res.json();
       cachedEnv = data.env || "user";
@@ -145,7 +145,7 @@ function updateEditerLink() {
   try {
     const lastUrl = localStorage.getItem("editerLastUrl");
     if (lastUrl && lastUrl.startsWith("/edit/")) {
-      const editerBtn = document.querySelector('.navigater-header [data-applet="editer"] a');
+      const editerBtn = document.querySelector('.navigator-header [data-applet="editer"] a');
       if (editerBtn) {
         editerBtn.setAttribute("href", lastUrl);
       }
@@ -211,22 +211,22 @@ function inject(appletName) {
     if (isInIframe()) {
       return;
     }
-    loadNavigaterCSS();
-    if (document.querySelector("[data-navigater-injected]")) {
-      console.log("Navigater already injected, skipping...");
+    loadNavigatorCSS();
+    if (document.querySelector("[data-navigator-injected]")) {
+      console.log("Navigator already injected, skipping...");
       addEventListeners$2();
       return;
     }
     const currentScript = document.currentScript;
-    let basePath = "/view/applets/navigater/frontend/";
+    let basePath = "/view/applets/navigator/frontend/";
     if (currentScript && currentScript.src) {
       const scriptUrl = new URL(currentScript.src);
-      basePath = scriptUrl.pathname.replace("navigater.js", "");
+      basePath = scriptUrl.pathname.replace("navigator.js", "");
     }
     try {
       const [envResult, htmlResponse] = yield Promise.all([
         getEnvironment(),
-        fetch(basePath + "navigater.html")
+        fetch(basePath + "navigator.html")
       ]);
       if (!htmlResponse.ok) {
         throw new Error(`HTTP error! status: ${htmlResponse.status}`);
@@ -236,7 +236,7 @@ function inject(appletName) {
       tempDiv.innerHTML = html2.trim();
       const headerElement = tempDiv.firstChild;
       if (headerElement) {
-        headerElement.setAttribute("data-navigater-injected", "true");
+        headerElement.setAttribute("data-navigator-injected", "true");
         removeUnavailableButtons(headerElement, envResult);
         if (document.body.firstChild) {
           document.body.insertBefore(headerElement, document.body.firstChild);
@@ -246,16 +246,16 @@ function inject(appletName) {
         addEventListeners$2();
       }
       updateEditerLink();
-      document.querySelectorAll(`.navigater-header [data-applet]`).forEach((button) => {
+      document.querySelectorAll(`.navigator-header [data-applet]`).forEach((button) => {
         button.classList.remove("active");
       });
-      const targetButton = document.querySelector(`.navigater-header [data-applet="${appletName}"]`);
+      const targetButton = document.querySelector(`.navigator-header [data-applet="${appletName}"]`);
       if (targetButton) {
         targetButton.classList.add("active");
       }
     } catch (error) {
-      console.error("Error loading navigater.html:", error);
-      injectNavigater();
+      console.error("Error loading navigator.html:", error);
+      injectNavigator();
     }
   });
 }
@@ -165466,9 +165466,9 @@ let Banner = class Banner2 extends Disposable {
     if (item.icon) {
       iconContainer.appendChild($$e(`div${ThemeIcon.asCSSSelector(item.icon)}`));
     }
-    const messageContainer = append$1(this.element, $$e("div.message-container"));
-    messageContainer.setAttribute("aria-hidden", "true");
-    messageContainer.appendChild(this.getBannerMessage(item.message));
+    const messageContainer2 = append$1(this.element, $$e("div.message-container"));
+    messageContainer2.setAttribute("aria-hidden", "true");
+    messageContainer2.appendChild(this.getBannerMessage(item.message));
     this.messageActionsContainer = append$1(this.element, $$e("div.message-actions-container"));
     if (item.actions) {
       for (const action of item.actions) {
@@ -170125,7 +170125,7 @@ function createFileSelectorTreeHTML(items, parentPath = "", level = 0) {
     const itemPath = parentPath ? parentPath + "/" + item.name : item.name;
     html2 += `
             <div class="file-selector-item" data-path="${itemPath}" data-is-directory="${item.isDirectory}">
-                <span class="file-icon">${item.isDirectory ? "📁" : "📄"}</span>
+                <span class="file-icon"><img src="/view/applets/shared/assets/${item.isDirectory ? "folder" : "file"}.svg" width="14" height="14" alt=""></span>
                 <span class="file-name">${item.name}</span>
                 ${item.isDirectory ? '<span class="expand-icon">▶</span>' : ""}
             </div>
@@ -170363,14 +170363,14 @@ function processStarterModeResponse(aiResponse, userMessage) {
           addMessage(clarificationMessage, "bot");
           return;
         }
-        addMessage("🔍 Project detected! Analyzing code blocks...", "system");
+        addMessage("Project detected! Analyzing code blocks...", "system");
         const codeBlocks = extractCodeBlocks(aiResponse);
         if (codeBlocks.length > 0) {
-          addMessage(`📁 Found ${codeBlocks.length} file(s). Creating project "${projectInfo.projectName}"...`, "system");
+          addMessage(`Found ${codeBlocks.length} file(s). Creating project "${projectInfo.projectName}"...`, "system");
           const result = yield createProjectFromAI(projectInfo.projectName, projectInfo.language, codeBlocks);
           if (result.success) {
             addMessage(`✅ Project "${projectInfo.projectName}" created successfully!`, "system");
-            addMessage(`📂 Files created: ${result.files.join(", ")}`, "system");
+            addMessage(`Files created: ${result.files.join(", ")}`, "system");
             addProjectViewButton(projectInfo.projectName, result.files);
           } else {
             addMessage(`❌ Failed to create project: ${result.error}`, "error");
@@ -170429,12 +170429,12 @@ function validateProjectInfo(projectInfo, userMessage) {
   return missing;
 }
 function generateClarificationMessage(missingInfo) {
-  let message = "I'd love to help you create a project! 🚀 However, I need a bit more information:\n\n";
+  let message = "I'd love to help you create a project! However, I need a bit more information:\n\n";
   if (missingInfo.includes("project_name")) {
-    message += "**📝 Project Name**: What would you like to call your project?\n";
+    message += "**Project Name**: What would you like to call your project?\n";
   }
   if (missingInfo.includes("language")) {
-    message += "**💻 Programming Language**: Which language or framework should I use?\n";
+    message += "**Programming Language**: Which language or framework should I use?\n";
     message += "   *(Examples: Python, JavaScript, React, Vue, Java, Go, etc.)*\n";
   }
   message += "\nOnce you provide these details, I'll create your project with all the necessary files! ✨";
@@ -170727,12 +170727,12 @@ function addProjectViewButton(projectName, files) {
   projectViewSection.innerHTML = `
         <div class="project-divider"></div>
         <div class="project-view-container">
-            <p class="project-ready-text">🎉 Project is ready! Files created:</p>
+            <p class="project-ready-text"><img src="/view/applets/shared/assets/check-circle.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:4px"> Project is ready! Files created:</p>
             <div class="project-files">
                 ${files.map((file) => `<span class="file-tag">${file}</span>`).join("")}
             </div>
             <button class="view-project-btn" data-file-path="${editPath}">
-                📁 View Project
+                <img src="/view/applets/shared/assets/folder.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:4px"> View Project
             </button>
         </div>
     `;
@@ -170748,7 +170748,7 @@ function openProjectFile(filePath) {
     const fileName = filePath.split("/").pop();
     if (editerState && editerState.trigger) {
       editerState.trigger("openFile", { fileName, filePath });
-      addMessage("📖 File opened in editor!", "system");
+      addMessage("File opened in editor!", "system");
     } else {
       window.location.href = "/edit/" + filePath;
     }
@@ -170767,6 +170767,24 @@ function initialize$d(_state) {
     console.log("Chat initialized");
   });
 }
+const ICONS_BASE = "/view/applets/shared/assets";
+function _fi(name) {
+  return `<img src="${ICONS_BASE}/${name}.svg" width="14" height="14" alt="">`;
+}
+const FI = {
+  file: _fi("file"),
+  folder: _fi("folder"),
+  trash: _fi("trash"),
+  download: _fi("download"),
+  link: _fi("link"),
+  eye: _fi("eye"),
+  edit: _fi("edit"),
+  copy: _fi("copy"),
+  terminal: _fi("terminal"),
+  upload: _fi("upload"),
+  zap: _fi("zap"),
+  x: _fi("x")
+};
 let state$6 = null;
 function showMessage$3(message, type = "info") {
   const messageDiv = document.createElement("div");
@@ -170949,7 +170967,7 @@ function closeTab(paneId, tabId) {
 function showTabContextMenu(event, paneId, tabId, filePath) {
   const menuItems = [
     {
-      icon: "📄",
+      icon: FI.file,
       text: "Close All Other Tabs",
       handler: () => {
         removeContextMenu();
@@ -170958,7 +170976,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
     },
     { type: "separator" },
     {
-      icon: "📄",
+      icon: FI.file,
       text: "Copy Relative Path",
       handler: () => {
         removeContextMenu();
@@ -170966,7 +170984,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
       }
     },
     {
-      icon: "🔗",
+      icon: FI.link,
       text: "Copy Absolute Path",
       handler: () => {
         removeContextMenu();
@@ -170975,7 +170993,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
     },
     { type: "separator" },
     {
-      icon: "✖️",
+      icon: FI.x,
       text: "Close Tab",
       handler: () => {
         removeContextMenu();
@@ -170983,7 +171001,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
       }
     },
     {
-      icon: "👁️",
+      icon: FI.eye,
       text: "View File",
       handler: () => {
         removeContextMenu();
@@ -171000,7 +171018,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
   if (selectionCount > 1) {
     menuItems = [
       {
-        icon: "💾",
+        icon: FI.download,
         text: `Download ${selectionCount} Items`,
         handler: () => {
           removeContextMenu();
@@ -171008,7 +171026,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         }
       },
       {
-        icon: "🗑️",
+        icon: FI.trash,
         text: `Delete ${selectionCount} Items`,
         className: "delete-item",
         handler: () => {
@@ -171020,7 +171038,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
   } else {
     menuItems = [
       {
-        icon: "✏️",
+        icon: FI.edit,
         text: `Rename ${itemType}`,
         handler: () => {
           removeContextMenu();
@@ -171032,7 +171050,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         }
       },
       {
-        icon: "📋",
+        icon: FI.copy,
         text: `Duplicate ${itemType}`,
         handler: () => {
           removeContextMenu();
@@ -171045,7 +171063,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       },
       { type: "separator" },
       {
-        icon: "💻",
+        icon: FI.terminal,
         text: "Open in Terminal",
         handler: () => __async(null, null, function* () {
           removeContextMenu();
@@ -171055,7 +171073,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       },
       { type: "separator" },
       {
-        icon: "📄",
+        icon: FI.file,
         text: "Copy Relative Path",
         handler: () => {
           removeContextMenu();
@@ -171063,7 +171081,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         }
       },
       {
-        icon: "🔗",
+        icon: FI.link,
         text: "Copy Absolute Path",
         handler: () => {
           removeContextMenu();
@@ -171075,7 +171093,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       menuItems.push(
         { type: "separator" },
         {
-          icon: "📤",
+          icon: FI.upload,
           text: "Upload Files",
           handler: () => {
             removeContextMenu();
@@ -171083,7 +171101,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
           }
         },
         {
-          icon: "📂",
+          icon: FI.folder,
           text: "Upload Folder",
           handler: () => {
             removeContextMenu();
@@ -171092,7 +171110,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         },
         { type: "separator" },
         {
-          icon: "📄",
+          icon: FI.file,
           text: "New File",
           handler: () => {
             removeContextMenu();
@@ -171100,7 +171118,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
           }
         },
         {
-          icon: "📁",
+          icon: FI.folder,
           text: "New Folder",
           handler: () => {
             removeContextMenu();
@@ -171112,7 +171130,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       menuItems.push(
         { type: "separator" },
         {
-          icon: "👁️",
+          icon: FI.eye,
           text: "View File",
           handler: () => {
             removeContextMenu();
@@ -171124,7 +171142,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
     menuItems.push(
       { type: "separator" },
       {
-        icon: "💾",
+        icon: FI.download,
         text: `Download ${itemType}`,
         handler: () => {
           removeContextMenu();
@@ -171137,7 +171155,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
       },
       { type: "separator" },
       {
-        icon: "🗑️",
+        icon: FI.trash,
         text: `Delete ${itemType}`,
         className: "delete-item",
         handler: () => {
@@ -171154,7 +171172,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
   menuItems.push(
     { type: "separator" },
     {
-      icon: "🚀",
+      icon: FI.zap,
       text: "Publish",
       handler: () => {
         removeContextMenu();
@@ -171676,7 +171694,7 @@ function displaySearchResults(results) {
     headerDiv.className = "result-file-header";
     const iconSpan = document.createElement("span");
     iconSpan.className = "result-file-icon";
-    iconSpan.textContent = "📄";
+    iconSpan.innerHTML = '<img src="/view/applets/shared/assets/file.svg" width="14" height="14" alt="">';
     const nameSpan = document.createElement("span");
     nameSpan.className = "result-file-name";
     nameSpan.textContent = file.path;
@@ -173009,6 +173027,43 @@ function injectHTML$5() {
     }
   });
 }
+function setupTerminalPanel() {
+  const panel = document.getElementById("editor-terminal-panel");
+  const resizeHandle = document.getElementById("editor-terminal-resize");
+  const toggleBtn = document.getElementById("editor-terminal-toggle");
+  if (!panel || !resizeHandle || !toggleBtn) return;
+  toggleBtn.addEventListener("click", () => {
+    const collapsed2 = panel.classList.toggle("collapsed");
+    toggleBtn.textContent = collapsed2 ? "▲" : "✕";
+    toggleBtn.title = collapsed2 ? "Expand terminal" : "Close terminal";
+  });
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  resizeHandle.addEventListener("mousedown", (e) => {
+    dragStartY = e.clientY;
+    dragStartHeight = panel.offsetHeight;
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    function onMouseMove(e2) {
+      const delta = dragStartY - e2.clientY;
+      const newHeight = Math.max(40, dragStartHeight + delta);
+      panel.style.height = newHeight + "px";
+      if (panel.classList.contains("collapsed") && newHeight > 40) {
+        panel.classList.remove("collapsed");
+        toggleBtn.textContent = "✕";
+        toggleBtn.title = "Close terminal";
+      }
+    }
+    function onMouseUp() {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  });
+}
 function initialize$7(_state) {
   return __async(this, null, function* () {
     state$2 = _state;
@@ -173019,6 +173074,7 @@ function initialize$7(_state) {
     setupEditorsEventListeners();
     initializeFileSync();
     setupAutosave();
+    setupTerminalPanel();
     console.log("Editors initialized");
   });
 }
@@ -173106,21 +173162,155 @@ function showMessage$1(message, type = "info") {
     messageDiv.remove();
   }, 3e3);
 }
+const ICON_BASE = "/view/applets/shared/assets";
+function _di(name, variant = "original") {
+  return `<img src="${ICON_BASE}/${name}-${variant}.svg" width="16" height="16" style="display:block" onerror="this.style.display='none'">`;
+}
+function _doc(color, shade, label) {
+  let text2 = "";
+  if (label) {
+    const n = label.length;
+    const fs = n <= 1 ? 6.5 : n === 2 ? 5.2 : 4.2;
+    text2 = `<text x="8" y="10" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-family="'Courier New',monospace" font-weight="bold" fill="white" opacity="0.9">${label}</text>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path d="M2 0h8l4 4v11H2z" fill="${color}"/><path d="M10 0l4 4h-4z" fill="${shade}"/>` + text2 + `</svg>`;
+}
+const FILE_ICONS = {
+  folder: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 3A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H6.914a.5.5 0 0 1-.354-.146l-.853-.854A1.5 1.5 0 0 0 4.672 3H1.5z" fill="#dcb67a"/></svg>`,
+  // Special full-filename matches
+  byName: {
+    "dockerfile": _di("docker"),
+    ".gitignore": _di("git"),
+    ".gitattributes": _di("git"),
+    ".env": _doc("#4eaa25", "#3a8018", "EN"),
+    ".env.local": _doc("#4eaa25", "#3a8018", "EN"),
+    ".eslintrc": _doc("#4b32c3", "#3020a0", "EL"),
+    ".eslintrc.js": _doc("#4b32c3", "#3020a0", "EL"),
+    ".eslintrc.json": _doc("#4b32c3", "#3020a0", "EL"),
+    ".prettierrc": _doc("#f7b93e", "#cc9010", "PR"),
+    ".prettierrc.json": _doc("#f7b93e", "#cc9010", "PR"),
+    "package.json": _di("nodejs", "plain"),
+    "package-lock.json": _di("nodejs", "plain"),
+    "tsconfig.json": _di("typescript"),
+    "jsconfig.json": _di("javascript"),
+    "webpack.config.js": _di("webpack"),
+    "vite.config.js": _di("vitejs"),
+    "vite.config.ts": _di("vitejs"),
+    "next.config.js": _di("nextjs", "plain"),
+    "next.config.ts": _di("nextjs", "plain"),
+    "tailwind.config.js": _di("tailwindcss", "original"),
+    "tailwind.config.ts": _di("tailwindcss", "original"),
+    "readme.md": _di("markdown"),
+    "license": _doc("#d4d4d4", "#aaaaaa", "LI"),
+    "makefile": _doc("#e34c26", "#b83018", "MK")
+  },
+  // Extension-based matches
+  byExt: {
+    // JavaScript family
+    "js": _di("javascript"),
+    "mjs": _di("javascript"),
+    "cjs": _di("javascript"),
+    "jsx": _di("react"),
+    // TypeScript family
+    "ts": _di("typescript"),
+    "tsx": _di("react"),
+    // Web
+    "html": _di("html5"),
+    "htm": _di("html5"),
+    "css": _di("css3"),
+    "scss": _di("sass"),
+    "sass": _di("sass"),
+    "less": _doc("#1d365d", "#142848", "LE"),
+    // Data / Config
+    "json": _doc("#cbcb41", "#a8a820", "{}"),
+    "jsonc": _doc("#cbcb41", "#a8a820", "{}"),
+    "xml": _doc("#f97316", "#d45f00", "XM"),
+    "yml": _doc("#cb171e", "#a01015", "YM"),
+    "yaml": _doc("#cb171e", "#a01015", "YM"),
+    "toml": _doc("#9c4221", "#7a3010", "TM"),
+    "ini": _doc("#9b9b9b", "#6f6f6f", "IN"),
+    "env": _doc("#4eaa25", "#3a8018", "EN"),
+    // Documentation
+    "md": _di("markdown"),
+    "mdx": _di("markdown"),
+    "txt": _doc("#9b9b9b", "#6f6f6f", "TX"),
+    // Python
+    "py": _di("python"),
+    "pyw": _di("python"),
+    "ipynb": _di("jupyter"),
+    // Database
+    "sql": _di("mysql"),
+    // Shell
+    "sh": _di("bash", "plain"),
+    "bash": _di("bash", "plain"),
+    "zsh": _di("bash", "plain"),
+    "fish": _di("bash", "plain"),
+    // PHP
+    "php": _di("php", "plain"),
+    // Ruby
+    "rb": _di("ruby"),
+    // Go
+    "go": _di("go", "original"),
+    // Rust
+    "rs": _di("rust", "original"),
+    // Java / Kotlin
+    "java": _di("java"),
+    "kt": _di("kotlin"),
+    // Frontend frameworks
+    "vue": _di("vuejs"),
+    "svelte": _di("svelte"),
+    // C family
+    "c": _di("c"),
+    "h": _di("c"),
+    "cpp": _di("cplusplus"),
+    "cc": _di("cplusplus"),
+    "cs": _di("csharp"),
+    // Other languages
+    "swift": _di("swift"),
+    "dart": _di("dart"),
+    "r": _di("r", "plain"),
+    "lua": _di("lua", "plain"),
+    "ex": _di("elixir"),
+    "exs": _di("elixir"),
+    "hs": _di("haskell"),
+    // Image
+    "svg": _doc("#ff9900", "#cc7700", "SG"),
+    "png": _doc("#ff9900", "#cc7700", "IM"),
+    "jpg": _doc("#ff9900", "#cc7700", "IM"),
+    "jpeg": _doc("#ff9900", "#cc7700", "IM"),
+    "gif": _doc("#ff9900", "#cc7700", "IM"),
+    "webp": _doc("#ff9900", "#cc7700", "IM"),
+    "ico": _doc("#ff9900", "#cc7700", "IC"),
+    // Media
+    "mp4": _doc("#9c27b0", "#6a1b80", "VD"),
+    "mp3": _doc("#9c27b0", "#6a1b80", "AU"),
+    "wav": _doc("#9c27b0", "#6a1b80", "AU"),
+    // Documents
+    "pdf": _doc("#f40f02", "#c00000", "PD"),
+    // Archives
+    "zip": _doc("#9b9b9b", "#6f6f6f", "ZP"),
+    "gz": _doc("#9b9b9b", "#6f6f6f", "GZ"),
+    "tar": _doc("#9b9b9b", "#6f6f6f", "TR"),
+    // Fonts
+    "woff": _doc("#9b9b9b", "#6f6f6f", "FT"),
+    "woff2": _doc("#9b9b9b", "#6f6f6f", "FT"),
+    "ttf": _doc("#9b9b9b", "#6f6f6f", "FT"),
+    // Misc
+    "lock": _doc("#9b9b9b", "#6f6f6f", "LK"),
+    "log": _doc("#9b9b9b", "#6f6f6f", "LG")
+  }
+};
 function getFileIcon(fileName, isDirectory) {
-  if (isDirectory) return "📁";
-  const ext = fileName.split(".").pop().toLowerCase();
-  const iconMap = {
-    "js": "📄",
-    "json": "🔧",
-    "html": "🌐",
-    "css": "🎨",
-    "md": "📝",
-    "py": "🐍",
-    "txt": "📄",
-    "xml": "📄",
-    "sql": "🗃️"
-  };
-  return iconMap[ext] || "📄";
+  if (isDirectory) return FILE_ICONS.folder;
+  const lower = fileName.toLowerCase();
+  if (FILE_ICONS.byName[lower]) return FILE_ICONS.byName[lower];
+  const ext = lower.includes(".") ? lower.split(".").pop() : "";
+  return FILE_ICONS.byExt[ext] || (() => {
+    const label = ext ? ext.toUpperCase().slice(0, 3) : "?";
+    const n = label.length;
+    const fs = n <= 1 ? 6.5 : n === 2 ? 5.2 : 4.2;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path d="M2 0h8l4 4v11H2z" fill="#858585"/><path d="M10 0l4 4h-4z" fill="#606060"/><text x="8" y="10" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-family="'Courier New',monospace" font-weight="bold" fill="white" opacity="0.9">${label}</text></svg>`;
+  })();
 }
 function getFileIconClass(fileName, isDirectory) {
   if (isDirectory) return "directory";
@@ -173175,7 +173365,7 @@ function createFile(fileName, content = "", template = "") {
     try {
       const data = { filePath: fileName, content };
       if (template) data.template = template;
-      const response = yield fetch("/edit/creater/_api/file", {
+      const response = yield fetch("/edit/creator/_api/file", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
@@ -173193,7 +173383,7 @@ function createFile(fileName, content = "", template = "") {
 function deleteFile(filePath) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/file/" + filePath, {
+      const response = yield fetch("/edit/creator/_api/file/" + filePath, {
         method: "DELETE"
       });
       if (!response.ok) {
@@ -173209,7 +173399,7 @@ function deleteFile(filePath) {
 function deleteFolder(folderPath, recursive = false) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/folder", {
+      const response = yield fetch("/edit/creator/_api/folder", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderPath, recursive })
@@ -173227,7 +173417,7 @@ function deleteFolder(folderPath, recursive = false) {
 function renameItem(oldPath, newPath) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/rename", {
+      const response = yield fetch("/edit/creator/_api/rename", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ oldPath, newPath })
@@ -173245,7 +173435,7 @@ function renameItem(oldPath, newPath) {
 function duplicateFile(sourcePath, targetPath) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/duplicate/file", {
+      const response = yield fetch("/edit/creator/_api/duplicate/file", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourcePath, targetPath })
@@ -173263,7 +173453,7 @@ function duplicateFile(sourcePath, targetPath) {
 function duplicateFolder(sourcePath, targetPath) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/duplicate/folder", {
+      const response = yield fetch("/edit/creator/_api/duplicate/folder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourcePath, targetPath })
@@ -173281,7 +173471,7 @@ function duplicateFolder(sourcePath, targetPath) {
 function createFolder(folderName) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch("/edit/creater/_api/folder", {
+      const response = yield fetch("/edit/creator/_api/folder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderPath: folderName })
@@ -173339,6 +173529,10 @@ function onTouchStart(e) {
   touchStartPosition = { x: touch.clientX, y: touch.clientY };
   longPressTimer = setTimeout(() => {
     const syntheticEvent = {
+      preventDefault: () => {
+      },
+      stopPropagation: () => {
+      },
       target: fileItem,
       dataTransfer: {
         effectAllowed: "move",
@@ -173427,102 +173621,311 @@ function clearLongPressTimer() {
 }
 let draggedElement = null;
 let draggedData = null;
+let currentDropTarget = null;
+let selectedFiles = /* @__PURE__ */ new Set();
+function clearSelection() {
+  selectedFiles.clear();
+  document.querySelectorAll(".file-item.selected").forEach((item) => {
+    item.classList.remove("selected");
+  });
+  updateMultiSelectMode();
+}
+function updateMultiSelectMode() {
+  selectedFiles.clear();
+  document.querySelectorAll(".file-item.active").forEach((item) => {
+    const path = item.getAttribute("data-path");
+    if (path) {
+      selectedFiles.add(path);
+    }
+  });
+  selectedFiles.size > 0;
+  updateSelectionStatus();
+}
+function updateSelectionStatus() {
+  const existingStatus = document.querySelector(".selection-status");
+  if (existingStatus) existingStatus.remove();
+  if (selectedFiles.size > 0) {
+    const statusDiv = document.createElement("div");
+    statusDiv.className = "selection-status";
+    statusDiv.innerHTML = `
+            <span>${selectedFiles.size} item${selectedFiles.size !== 1 ? "s" : ""} selected</span>
+            <button class="clear-selection-btn">Clear</button>
+        `;
+    statusDiv.querySelector(".clear-selection-btn").addEventListener("click", clearSelection);
+    const explorerHeader = document.querySelector(".explorer-header");
+    if (explorerHeader) {
+      explorerHeader.appendChild(statusDiv);
+    }
+  }
+}
+window.clearSelection = clearSelection;
 function onDragStart(e) {
+  console.log("=== onDragStart called ===", e.target);
+  window.getSelection().removeAllRanges();
   const fileItem = e.target.closest(".file-item");
-  if (!fileItem) return;
-  draggedElement = fileItem;
-  draggedData = {
-    path: fileItem.getAttribute("data-path"),
-    isDirectory: fileItem.getAttribute("data-is-directory") === "true"
-  };
-  fileItem.classList.add("dragging");
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", draggedData.path);
+  if (!fileItem) {
+    console.log("No file item found for drag");
+    return;
+  }
+  const path = fileItem.getAttribute("data-path");
+  const isDirectory = fileItem.getAttribute("data-is-directory") === "true";
+  console.log("Starting drag for:", { path, isDirectory });
+  const activeItems = document.querySelectorAll(".file-item.active");
+  const activeCount = activeItems.length;
+  const isItemActive = fileItem.classList.contains("active");
+  if (activeCount > 1 && isItemActive) {
+    const activePaths = [];
+    activeItems.forEach((item) => {
+      const itemPath = item.getAttribute("data-path");
+      activePaths.push(itemPath);
+      item.classList.add("dragging");
+    });
+    draggedElement = fileItem;
+    draggedData = {
+      paths: activePaths,
+      isMultiple: true
+    };
+    console.log("Dragging multiple items:", draggedData.paths);
+  } else {
+    activeItems.forEach((item) => {
+      item.classList.remove("active");
+    });
+    fileItem.classList.add("active");
+    fileItem.classList.add("dragging");
+    draggedElement = fileItem;
+    draggedData = {
+      paths: [path],
+      isMultiple: false
+    };
+    console.log("Dragging single item:", path);
+  }
+  if (e.dataTransfer) {
+    console.log("Setting dataTransfer data...");
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "internal-file-move");
+      console.log("DataTransfer set successfully");
+      if (draggedData.isMultiple && draggedData.paths.length > 1) {
+        const dragImage = document.createElement("div");
+        dragImage.className = "drag-image-multi";
+        dragImage.innerHTML = `<span class="drag-count">${draggedData.paths.length} items</span>`;
+        dragImage.style.cssText = `
+                    position: absolute;
+                    top: -1000px;
+                    background: #007acc;
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                `;
+        document.body.appendChild(dragImage);
+        e.dataTransfer.setDragImage(dragImage, 0, 0);
+        setTimeout(() => dragImage.remove(), 0);
+      }
+    } catch (error) {
+      console.error("Error setting dataTransfer:", error);
+    }
+  } else {
+    console.log("No dataTransfer available");
+  }
+  console.log("=== Drag start complete ===", { draggedData });
+}
+function updateDropTarget(newTarget) {
+  if (currentDropTarget === newTarget) return;
+  if (currentDropTarget) {
+    currentDropTarget.classList.remove("drag-over");
+    currentDropTarget.classList.remove("root-drop-active");
+  }
+  currentDropTarget = newTarget;
+  if (currentDropTarget) {
+    if (currentDropTarget.classList.contains("file-tree-container")) {
+      currentDropTarget.classList.add("root-drop-active");
+    } else {
+      currentDropTarget.classList.add("drag-over");
+    }
+  }
 }
 function onDragOver(e) {
-  e.preventDefault();
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = "none";
+  if (draggedData) {
+    console.log("=== Allowing drop ===");
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
   }
-  if (!draggedData) return;
   const fileItem = e.target.closest(".file-item");
   const container2 = e.target.closest(".file-tree-container");
   if (fileItem) {
+    if (fileItem === draggedElement) {
+      updateDropTarget(null);
+      return;
+    }
     const isDirectory = fileItem.getAttribute("data-is-directory") === "true";
     const targetPath = fileItem.getAttribute("data-path");
-    if (isDirectory && targetPath !== draggedData.path && !isDescendantPath(targetPath, draggedData.path)) {
+    if (isDirectory && draggedData && draggedData.paths) {
+      let isValidTarget = true;
+      for (const dragPath of draggedData.paths) {
+        if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+          isValidTarget = false;
+          break;
+        }
+      }
+      if (isValidTarget) {
+        updateDropTarget(fileItem);
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "move";
+        }
+      } else {
+        updateDropTarget(null);
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "none";
+        }
+      }
+    } else if (!isDirectory) {
+      updateDropTarget(null);
       if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = "move";
+        e.dataTransfer.dropEffect = "none";
       }
     }
-  } else if (container2) {
+  } else if (container2 && draggedData) {
+    updateDropTarget(container2);
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = "move";
     }
+  } else {
+    updateDropTarget(null);
   }
 }
+let currentDragOverElement = null;
+let dragEnterCounter = 0;
 function onDragEnter(e) {
-  e.preventDefault();
   if (!draggedData) return;
-  const fileItem = e.target.closest(".file-item");
-  const container2 = e.target.closest(".file-tree-container");
-  if (fileItem) {
-    const isDirectory = fileItem.getAttribute("data-is-directory") === "true";
-    const targetPath = fileItem.getAttribute("data-path");
-    if (isDirectory && targetPath !== draggedData.path && !isDescendantPath(targetPath, draggedData.path)) {
-      fileItem.classList.add("drag-over");
+  e.preventDefault();
+  dragEnterCounter++;
+  let targetElement = e.target;
+  let directoryItem = null;
+  while (targetElement && targetElement !== document.body) {
+    if (targetElement.classList && targetElement.classList.contains("file-item")) {
+      const isDirectory = targetElement.getAttribute("data-is-directory") === "true";
+      if (isDirectory) {
+        directoryItem = targetElement;
+        break;
+      }
     }
-  } else if (container2) {
-    container2.classList.add("root-drop-active");
+    if (targetElement.id === "file-tree-container" || targetElement.id === "file-tree") {
+      directoryItem = targetElement;
+      directoryItem.setAttribute("data-path", ".");
+      directoryItem.setAttribute("data-is-directory", "true");
+      break;
+    }
+    targetElement = targetElement.parentElement;
+  }
+  if (directoryItem) {
+    const targetPath = directoryItem.getAttribute("data-path");
+    if (draggedData.paths) {
+      let isValidTarget = true;
+      for (const dragPath of draggedData.paths) {
+        if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+          isValidTarget = false;
+          break;
+        }
+      }
+      if (isValidTarget) {
+        if (currentDragOverElement && currentDragOverElement !== directoryItem) {
+          currentDragOverElement.classList.remove("drag-over");
+        }
+        directoryItem.classList.add("drag-over");
+        currentDragOverElement = directoryItem;
+      }
+    }
+  } else {
+    const container2 = e.target.closest(".file-tree-container");
+    if (container2) {
+      container2.classList.add("root-drop-active");
+    }
   }
 }
 function onDragLeave(e) {
-  const fileItem = e.target.closest(".file-item");
-  const container2 = e.target.closest(".file-tree-container");
-  if (fileItem) {
-    fileItem.classList.remove("drag-over");
-  } else if (container2) {
-    container2.classList.remove("root-drop-active");
+  if (!draggedData) return;
+  e.preventDefault();
+  dragEnterCounter--;
+  if (dragEnterCounter <= 0) {
+    dragEnterCounter = 0;
+    if (currentDragOverElement) {
+      currentDragOverElement.classList.remove("drag-over");
+      currentDragOverElement = null;
+    }
+    const container2 = e.target.closest(".file-tree-container");
+    if (container2) {
+      container2.classList.remove("root-drop-active");
+    }
   }
 }
 function onDrop(e) {
-  e.preventDefault();
+  console.log("🚀🚀🚀 DROP EVENT TRIGGERED!!! 🚀🚀🚀");
   if (!draggedData) {
+    console.log("❌ No drag data");
+    return;
+  }
+  console.log("✅ Processing drop...");
+  e.preventDefault();
+  console.log("=== Drop accepted - have draggedData ===", { draggedData });
+  let targetElement = e.target;
+  let directoryItem = null;
+  let targetPath = ".";
+  while (targetElement && targetElement !== document.body) {
+    if (targetElement.classList && targetElement.classList.contains("file-item")) {
+      const isDirectory = targetElement.getAttribute("data-is-directory") === "true";
+      if (isDirectory) {
+        directoryItem = targetElement;
+        break;
+      }
+    }
+    if (targetElement.id === "file-tree-container" || targetElement.id === "file-tree") {
+      targetPath = ".";
+      console.log("Drop on root container detected");
+      break;
+    }
+    targetElement = targetElement.parentElement;
+  }
+  if (directoryItem) {
+    targetPath = directoryItem.getAttribute("data-path");
+  }
+  console.log("Drop target determined:", { targetPath, draggedPaths: draggedData.paths, directoryItem });
+  let isValidTarget = true;
+  if (draggedData && draggedData.paths) {
+    for (const dragPath of draggedData.paths) {
+      if (targetPath === dragPath || isDescendantPath(targetPath, dragPath)) {
+        isValidTarget = false;
+        break;
+      }
+    }
+  }
+  if (!isValidTarget) {
+    console.log("Invalid drop target - cannot drop into itself or descendants");
     cleanupDrag();
     return;
   }
-  const fileItem = e.target.closest(".file-item");
-  e.target.closest(".file-tree-container");
-  let targetPath = ".";
-  if (fileItem) {
-    const isDirectory = fileItem.getAttribute("data-is-directory") === "true";
-    const target = fileItem.getAttribute("data-path");
-    if (isDirectory && target !== draggedData.path && !isDescendantPath(target, draggedData.path)) {
-      targetPath = target;
-    } else {
-      cleanupDrag();
-      return;
-    }
-  }
-  try {
-    performMove(draggedData.path, targetPath, draggedData.isDirectory).catch((error) => {
-      console.error("File move error:", error);
-      showMessage$1(`File move error: ${error.message}`, "error");
+  console.log(`Moving ${draggedData.paths.length} items to:`, targetPath);
+  if (draggedData.paths && draggedData.paths.length > 0) {
+    performMultipleMove(draggedData.paths, targetPath).then(() => {
+      console.log("All moves completed");
+      clearSelection();
+      refreshFileTree();
+    }).catch((error) => {
+      console.error("Error during multiple move:", error);
     });
-  } catch (error) {
-    console.error("Drop handling error:", error);
-    showMessage$1(`Drop handling error: ${error.message}`, "error");
   }
   cleanupDrag();
 }
 function onDragEnd(e) {
+  document.body.style.userSelect = "";
+  document.body.style.webkitUserSelect = "";
   cleanupDrag();
 }
 function cleanupDrag() {
   try {
-    if (draggedElement) {
-      draggedElement.classList.remove("dragging");
-    }
+    document.querySelectorAll(".file-item.dragging").forEach((item) => {
+      item.classList.remove("dragging");
+    });
     const dragOverElements = document.querySelectorAll(".drag-over");
     dragOverElements.forEach((el) => {
       el.classList.remove("drag-over");
@@ -173531,13 +173934,58 @@ function cleanupDrag() {
     rootDropElements.forEach((el) => {
       el.classList.remove("root-drop-active");
     });
+    dragEnterCounter = 0;
+    currentDragOverElement = null;
     draggedElement = null;
     draggedData = null;
+    document.body.style.userSelect = "";
+    document.body.style.webkitUserSelect = "";
   } catch (error) {
     console.error("Drag cleanup error:", error);
+    dragEnterCounter = 0;
+    currentDragOverElement = null;
     draggedElement = null;
     draggedData = null;
   }
+}
+function performMultipleMove(sourcePaths, targetPath) {
+  return __async(this, null, function* () {
+    const totalFiles = sourcePaths.length;
+    let successCount = 0;
+    let failedFiles = [];
+    console.log("Starting multiple move:", { sourcePaths, targetPath });
+    for (const sourcePath of sourcePaths) {
+      try {
+        const fileName = sourcePath.split("/").pop();
+        let fileItem = null;
+        const allFileItems = document.querySelectorAll(".file-item");
+        for (const item of allFileItems) {
+          if (item.getAttribute("data-path") === sourcePath) {
+            fileItem = item;
+            break;
+          }
+        }
+        const isDirectory = fileItem ? fileItem.getAttribute("data-is-directory") === "true" : false;
+        console.log(`Moving ${fileName} from ${sourcePath} to ${targetPath}, isDirectory: ${isDirectory}`);
+        yield performMove(sourcePath, targetPath, isDirectory);
+        successCount++;
+        console.log(`Moved ${fileName} successfully (${successCount}/${totalFiles})`);
+      } catch (error) {
+        console.error(`Failed to move ${sourcePath}:`, error);
+        failedFiles.push(sourcePath.split("/").pop());
+      }
+    }
+    if (successCount === totalFiles) {
+      console.log(`Successfully moved ${totalFiles} item${totalFiles > 1 ? "s" : ""}`);
+      return Promise.resolve();
+    } else if (successCount > 0) {
+      console.log(`Moved ${successCount}/${totalFiles} items. Failed: ${failedFiles.join(", ")}`);
+      return Promise.resolve();
+    } else {
+      console.error(`Failed to move items: ${failedFiles.join(", ")}`);
+      return Promise.reject(new Error(`Failed to move items: ${failedFiles.join(", ")}`));
+    }
+  });
 }
 function isDescendantPath(parentPath, childPath) {
   if (!childPath) return false;
@@ -173571,7 +174019,7 @@ function performMove(sourcePath, targetDirectoryPath, isDirectory) {
         }
       }
       showMoveProgress(sourcePath, targetDirectoryPath);
-      const response = yield fetch("/edit/creater/_api/rename", {
+      const response = yield fetch("/edit/creator/_api/rename", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -173597,49 +174045,32 @@ function performMove(sourcePath, targetDirectoryPath, isDirectory) {
             }
           });
         }
-        if (state$1.activeFilePath && (state$1.activeFilePath === sourcePath || state$1.activeFilePath.startsWith(sourcePath + "/"))) {
-          const newFileName = state$1.activeFilePath.replace(sourcePath, newPath);
-          state$1.activeFilePath = newFileName;
+        try {
+          if (state$1 && state$1.activeFilePath && (state$1.activeFilePath === sourcePath || state$1.activeFilePath.startsWith(sourcePath + "/"))) {
+            const newFileName = state$1.activeFilePath.replace(sourcePath, newPath);
+            if (state$1.hasOwnProperty("activeFilePath")) {
+              state$1.activeFilePath = newFileName;
+            }
+          }
+        } catch (error) {
+          console.warn("Could not update activeFilePath:", error.message);
         }
         yield refreshFileTree();
-        showMoveMessage(
-          `Successfully moved ${isDirectory ? "folder" : "file"} "${fileName}" to "${targetDirectoryPath}".`,
-          "success"
-        );
+        console.log(`Successfully moved ${isDirectory ? "folder" : "file"} "${fileName}" to "${targetDirectoryPath}"`);
       } else {
         throw new Error(result.error || "Received failure response from API");
       }
     } catch (error) {
       console.error("performMove error:", error);
-      hideMoveProgress();
-      showMoveMessage(`File move failed: ${error.message}`, "error");
     }
   });
 }
 function showMoveProgress(sourcePath, targetPath) {
-  const progressDiv = document.createElement("div");
-  progressDiv.id = "move-progress";
-  progressDiv.className = "move-progress";
-  progressDiv.innerHTML = `
-        <div class="move-progress-content">
-            <div class="move-progress-text">Moving "${sourcePath}" to "${targetPath}"...</div>
-            <div class="move-progress-spinner"></div>
-        </div>
-    `;
-  document.querySelector(".explorer-content").appendChild(progressDiv);
+  const fileName = sourcePath.split("/").pop();
+  const targetName = targetPath === "." ? "root" : targetPath.split("/").pop();
+  console.log(`Moving "${fileName}" to "${targetName}"...`);
 }
 function hideMoveProgress() {
-  const progressDiv = document.getElementById("move-progress");
-  if (progressDiv) progressDiv.remove();
-}
-function showMoveMessage(message, type = "success") {
-  const messageDiv = document.createElement("div");
-  messageDiv.className = `move-message move-message-${type}`;
-  messageDiv.textContent = message;
-  document.querySelector(".explorer-content").appendChild(messageDiv);
-  setTimeout(() => {
-    messageDiv.remove();
-  }, 3e3);
 }
 function expandToCurrentFile(filePath) {
   if (!filePath || filePath === ".") return;
@@ -173759,10 +174190,10 @@ function attachFileTreeEvents() {
   fileTree.removeEventListener("touchstart", onTouchStart);
   fileTree.removeEventListener("touchmove", onTouchMove);
   fileTree.removeEventListener("touchend", onTouchEnd);
-  container2.removeEventListener("dragover", onDragOver);
-  container2.removeEventListener("dragenter", onDragEnter);
-  container2.removeEventListener("dragleave", onDragLeave);
-  container2.removeEventListener("drop", onDrop);
+  container2.removeEventListener("dragover", onDragOver, true);
+  container2.removeEventListener("dragenter", onDragEnter, true);
+  container2.removeEventListener("dragleave", onDragLeave, true);
+  container2.removeEventListener("drop", onDrop, true);
   fileTree.addEventListener("click", handleTreeClick);
   fileTree.addEventListener("contextmenu", handleTreeContextMenu);
   fileTree.addEventListener("keydown", handleTreeKeydown);
@@ -173771,16 +174202,12 @@ function attachFileTreeEvents() {
     fileTree.addEventListener("touchmove", onTouchMove, { passive: false });
     fileTree.addEventListener("touchend", onTouchEnd, { passive: false });
   } else {
+    console.log("=== Setting up SIMPLE drag/drop ===");
     fileTree.addEventListener("dragstart", onDragStart);
     fileTree.addEventListener("dragover", onDragOver);
-    fileTree.addEventListener("dragenter", onDragEnter);
-    fileTree.addEventListener("dragleave", onDragLeave);
     fileTree.addEventListener("drop", onDrop);
     fileTree.addEventListener("dragend", onDragEnd);
-    container2.addEventListener("dragover", onDragOver);
-    container2.addEventListener("dragenter", onDragEnter);
-    container2.addEventListener("dragleave", onDragLeave);
-    container2.addEventListener("drop", onDrop);
+    console.log("=== Simple drag/drop ready ===");
   }
   const fileItems = fileTree.querySelectorAll(".file-item");
   fileItems.forEach((item) => {
@@ -174095,61 +174522,87 @@ function createFolderInFolder(folderPath) {
   });
 }
 function setupDragAndDrop() {
-  const explorerContent = document.querySelector(".explorer-content");
-  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
-    explorerContent.addEventListener(eventName, preventDefaults, false);
-    document.body.addEventListener(eventName, preventDefaults, false);
-  });
-  ["dragenter", "dragover"].forEach((eventName) => {
-    explorerContent.addEventListener(eventName, highlight, false);
-  });
-  ["dragleave", "drop"].forEach((eventName) => {
-    explorerContent.addEventListener(eventName, unhighlight, false);
-  });
-  explorerContent.addEventListener("drop", handleDrop, false);
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  function highlight() {
-    explorerContent.classList.add("drag-over");
-  }
-  function unhighlight() {
-    explorerContent.classList.remove("drag-over");
-  }
-  function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFileUpload(files);
-  }
+  console.log("=== External drag/drop setup DISABLED for testing ===");
+  return;
 }
 function handleFileUpload(files) {
-  if (!files || files.length === 0) {
-    return;
-  }
-  const filesToUpload = [];
-  let processedCount = 0;
-  Array.from(files).forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const base64Content = e.target.result.split(",")[1];
-        const fileName = file.webkitRelativePath || file.name;
-        filesToUpload.push({ fileName, fileContent: base64Content });
-        processedCount++;
-        if (processedCount === files.length) {
-          uploadFiles(filesToUpload);
+  return __async(this, null, function* () {
+    if (!files || files.length === 0) {
+      return;
+    }
+    const fileCount = files.length;
+    showUploadMessage(`Processing ${fileCount} file${fileCount > 1 ? "s" : ""}...`, "info");
+    const filesToUpload = [];
+    const errors = [];
+    const filePromises = Array.from(files).map((file, index) => {
+      return new Promise((resolve2, reject) => {
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          errors.push(`${file.name}: File too large (max 50MB)`);
+          resolve2(null);
+          return;
         }
-      } catch (error) {
-        console.error("Error processing file:", error);
-        showUploadMessage(`File processing error: ${error.message}`, "error");
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const base64Content = e.target.result.split(",")[1];
+            const fileName = file.webkitRelativePath || file.name;
+            let finalFileName = fileName;
+            let counter = 1;
+            while (filesToUpload.some((f) => f.fileName === finalFileName)) {
+              const nameParts = fileName.split(".");
+              if (nameParts.length > 1) {
+                const ext = nameParts.pop();
+                finalFileName = `${nameParts.join(".")}_${counter}.${ext}`;
+              } else {
+                finalFileName = `${fileName}_${counter}`;
+              }
+              counter++;
+            }
+            resolve2({ fileName: finalFileName, fileContent: base64Content });
+          } catch (error) {
+            console.error(`Error processing file ${file.name}:`, error);
+            errors.push(`${file.name}: ${error.message}`);
+            resolve2(null);
+          }
+        };
+        reader.onerror = function(error) {
+          console.error(`FileReader error for ${file.name}:`, error);
+          errors.push(`${file.name}: Failed to read file`);
+          resolve2(null);
+        };
+        const timeout2 = setTimeout(() => {
+          reader.abort();
+          errors.push(`${file.name}: Reading timeout`);
+          resolve2(null);
+        }, 3e4);
+        reader.onloadend = () => {
+          clearTimeout(timeout2);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    try {
+      const results = yield Promise.all(filePromises);
+      results.forEach((result) => {
+        if (result) {
+          filesToUpload.push(result);
+        }
+      });
+      if (errors.length > 0) {
+        showUploadMessage(`Failed to process ${errors.length} file(s). Check console for details.`, "error");
+        console.error("File processing errors:", errors);
       }
-    };
-    reader.onerror = function(error) {
-      console.error("FileReader error:", error);
-      showUploadMessage(`File read error: ${error.message}`, "error");
-    };
-    reader.readAsDataURL(file);
+      if (filesToUpload.length > 0) {
+        showUploadMessage(`Uploading ${filesToUpload.length} file${filesToUpload.length > 1 ? "s" : ""}...`, "info");
+        yield uploadFiles(filesToUpload);
+      } else {
+        showUploadMessage("No files to upload", "warning");
+      }
+    } catch (error) {
+      console.error("Error processing files:", error);
+      showUploadMessage(`Failed to process files: ${error.message}`, "error");
+    }
   });
 }
 function uploadFiles(files, targetPath = null) {
@@ -174180,32 +174633,144 @@ function uploadFiles(files, targetPath = null) {
     }
   });
 }
-function showUploadProgress(fileCount) {
+let uploadProgressContainer = null;
+let uploadProgressTimeout = null;
+function showUploadProgress(fileCount, currentFile = 0) {
+  if (uploadProgressContainer) {
+    uploadProgressContainer.remove();
+  }
   const progressDiv = document.createElement("div");
   progressDiv.id = "upload-progress";
-  progressDiv.className = "upload-progress";
+  progressDiv.className = "upload-progress-container";
+  const percentage = fileCount > 0 ? Math.round(currentFile / fileCount * 100) : 0;
   progressDiv.innerHTML = `
-        <div class="upload-progress-content">
-            <div class="upload-progress-text">Uploading ${fileCount} files...</div>
-            <div class="upload-progress-bar">
-                <div class="upload-progress-fill"></div>
-            </div>
+        <div class="upload-progress-header">
+            <span class="upload-progress-title">
+                <i class="codicon codicon-cloud-upload"></i>
+                Uploading ${currentFile}/${fileCount} file${fileCount !== 1 ? "s" : ""}
+            </span>
+            <button class="upload-progress-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
         </div>
+        <div class="upload-progress-bar">
+            <div class="upload-progress-fill" style="width: ${percentage}%"></div>
+        </div>
+        <div class="upload-progress-info">${percentage}% complete</div>
     `;
-  document.querySelector(".explorer-content").appendChild(progressDiv);
+  document.body.appendChild(progressDiv);
+  uploadProgressContainer = progressDiv;
+  if (percentage === 100) {
+    uploadProgressTimeout = setTimeout(() => {
+      hideUploadProgress();
+    }, 2e3);
+  }
 }
 function hideUploadProgress() {
-  const progressDiv = document.getElementById("upload-progress");
-  if (progressDiv) progressDiv.remove();
+  if (uploadProgressTimeout) {
+    clearTimeout(uploadProgressTimeout);
+    uploadProgressTimeout = null;
+  }
+  if (uploadProgressContainer) {
+    uploadProgressContainer.style.animation = "slide-down 0.3s ease";
+    setTimeout(() => {
+      if (uploadProgressContainer) {
+        uploadProgressContainer.remove();
+        uploadProgressContainer = null;
+      }
+    }, 300);
+  }
 }
+let messageContainer = null;
 function showUploadMessage(message, type = "success") {
+  if (!messageContainer) {
+    messageContainer = document.createElement("div");
+    messageContainer.className = "upload-messages-container";
+    messageContainer.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 350px;
+        `;
+    document.body.appendChild(messageContainer);
+  }
   const messageDiv = document.createElement("div");
   messageDiv.className = `upload-message upload-message-${type}`;
-  messageDiv.textContent = message;
-  document.querySelector(".explorer-content").appendChild(messageDiv);
+  const icons = {
+    success: "✓",
+    error: "✗",
+    warning: "⚠",
+    info: "ℹ"
+  };
+  const icon = icons[type] || icons.info;
+  messageDiv.innerHTML = `
+        <span class="upload-message-icon">${icon}</span>
+        <span class="upload-message-text">${message}</span>
+        <button class="upload-message-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+  const colors = {
+    success: "linear-gradient(135deg, #28a745, #20c997)",
+    error: "linear-gradient(135deg, #dc3545, #ff6b6b)",
+    warning: "linear-gradient(135deg, #ffc107, #ffb347)",
+    info: "linear-gradient(135deg, #17a2b8, #3498db)"
+  };
+  messageDiv.style.cssText = `
+        background: ${colors[type]};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: slide-in 0.3s ease;
+        position: relative;
+        min-width: 250px;
+    `;
+  const iconSpan = messageDiv.querySelector(".upload-message-icon");
+  if (iconSpan) {
+    iconSpan.style.cssText = `
+            font-size: 16px;
+            font-weight: bold;
+        `;
+  }
+  const textSpan = messageDiv.querySelector(".upload-message-text");
+  if (textSpan) {
+    textSpan.style.cssText = `
+            flex: 1;
+        `;
+  }
+  const closeBtn = messageDiv.querySelector(".upload-message-close");
+  if (closeBtn) {
+    closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        `;
+    closeBtn.onmouseover = () => closeBtn.style.opacity = "1";
+    closeBtn.onmouseout = () => closeBtn.style.opacity = "0.8";
+  }
+  messageContainer.appendChild(messageDiv);
+  const timeout2 = type === "error" ? 5e3 : 3e3;
   setTimeout(() => {
-    messageDiv.remove();
-  }, 3e3);
+    messageDiv.style.animation = "slide-out 0.3s ease";
+    setTimeout(() => {
+      messageDiv.remove();
+      if (messageContainer && messageContainer.children.length === 0) {
+        messageContainer.remove();
+        messageContainer = null;
+      }
+    }, 300);
+  }, timeout2);
 }
 function getCurrentDirectory() {
   return ".";
@@ -174263,7 +174828,7 @@ function handleFileUploadToFolder(files, targetPath) {
       if (filesToUpload.length === files.length) {
         if (folderName) {
           const newFolderPath = targetPath === "." ? folderName : `${targetPath}/${folderName}`;
-          fetch("/edit/creater/_api/folder", {
+          fetch("/edit/creator/_api/folder", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folderPath: newFolderPath })
@@ -175229,9 +175794,9 @@ function showTerminalPreview(terminalConfig) {
 		<div class="previewer-title">${terminalConfig.title} - ${terminalConfig.workingDirectory}</div>
 		<div class="previewer-actions">
 			<button class="preview-btn" id="runScript" title="Run Script">▶️</button>
-			<button class="reset-terminal-btn" id="resetTerminal" title="Reset Terminal Session">🔥</button>
-			<button class="refresh-preview-btn" id="refreshTerminal" title="Restart Terminal">🔄</button>
-			<button class="open-external-btn" id="openFullTerminal" title="Open in New Tab">↗️</button>
+			<button class="reset-terminal-btn" id="resetTerminal" title="Reset Terminal Session"><img src="/view/applets/shared/assets/zap.svg" width="14" height="14" alt=""></button>
+			<button class="refresh-preview-btn" id="refreshTerminal" title="Restart Terminal"><img src="/view/applets/shared/assets/refresh-cw.svg" width="14" height="14" alt=""></button>
+			<button class="open-external-btn" id="openFullTerminal" title="Open in New Tab"><img src="/view/applets/shared/assets/external-link.svg" width="14" height="14" alt=""></button>
 		</div>
 	`;
   const encodedPath = encodeURIComponent(terminalConfig.workingDirectory);
@@ -175375,8 +175940,8 @@ function setupPreviewForRenderer() {
   previewerHeader.innerHTML = `
 		<div class="previewer-title">${state.activeFilePath}</div>
 		<div class="previewer-actions">
-			<button class="refresh-preview-btn" title="Refresh Preview">🔄</button>
-			<button class="open-external-btn" title="Open in New Tab">🔗</button>
+			<button class="refresh-preview-btn" title="Refresh Preview"><img src="/view/applets/shared/assets/refresh-cw.svg" width="14" height="14" alt=""></button>
+			<button class="open-external-btn" title="Open in New Tab"><img src="/view/applets/shared/assets/external-link.svg" width="14" height="14" alt=""></button>
 		</div>
 	`;
   previewContainer.innerHTML = "";

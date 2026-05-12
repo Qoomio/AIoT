@@ -1,7 +1,7 @@
 module.exports = {
 	apps: [
 		{
-		  "name": "aiot",
+		  "name": "qoom2",
 		  "script": "./server.js",
 		  "instances": 1,
 		  "exec_mode": "fork",

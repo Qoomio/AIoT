@@ -1,4 +1,4 @@
-import { inject as injectNavigater } from '/view/applets/navigater/frontend/navigater.js';
+import { inject as injectNavigator } from '/view/applets/navigator/frontend/navigator.js';
 
 import editerState from '/view/applets/editer/Editer.js';
 import * as chat from '/view/applets/editer/chat/frontend/chat.js';
@@ -359,7 +359,7 @@ function initializeEvents() {
 }
 
 async function initialize() {
-    injectNavigater('editer');
+    injectNavigator('editer');
 
     // Seed the editor state with what is in the url
     deserializeEditorState();

@@ -57,7 +57,7 @@ class ConsoleCapture {
       this.originalConsole.debug(...args);
     };
 
-    console.log('🔍 Console capture started');
+    console.log('Console capture started');
   }
 
   /**
@@ -76,7 +76,7 @@ class ConsoleCapture {
     console.debug = this.originalConsole.debug;
 
     this.isCapturing = false;
-    this.originalConsole.log('🔍 Console capture stopped');
+    this.originalConsole.log('Console capture stopped');
   }
 
   /**

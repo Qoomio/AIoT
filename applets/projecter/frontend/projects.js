@@ -3,7 +3,7 @@
  * Handles project creation, language selection, and project management
  */
 
-import { inject as injectNavigater } from '/view/applets/navigater/frontend/navigater.js';
+import { inject as injectNavigator } from '/view/applets/navigator/frontend/navigator.js';
 
 let selectedLanguage = null;
 
@@ -227,4 +227,4 @@ window.openProject = openProject;
 window.deleteProject = deleteProject;
 
 initializeProjecter();
-injectNavigater('projecter');
+injectNavigator('projecter');

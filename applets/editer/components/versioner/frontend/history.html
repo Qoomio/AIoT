@@ -3,7 +3,7 @@
     <div class="modal-container">
         <div class="modal-header">
             <h2 class="modal-title">
-                <span class="history-icon">🕰️</span>
+                <span class="history-icon"><img src="/view/applets/shared/assets/clock.svg" width="18" height="18" alt=""></span>
                 Version History
             </h2>
             <div class="modal-file-info">
@@ -11,7 +11,7 @@
             </div>
             <button class="modal-close-btn" id="modalCloseBtn" title="Close (Esc)">×</button>
         </div>
-        
+
         <div class="modal-body">
             <div class="version-list-container">
                 <div class="version-list-header">
@@ -20,29 +20,29 @@
                         <span id="versionCount">0</span> versions
                     </div>
                 </div>
-                
+
                 <div class="version-list-loading" id="versionListLoading">
                     <div class="loading-spinner"></div>
                     <span>Loading versions...</span>
                 </div>
-                
+
                 <div class="version-list-error" id="versionListError" style="display: none;">
                     <div class="error-icon">⚠️</div>
                     <div class="error-message" id="errorMessage"></div>
                     <button class="retry-btn" id="retryBtn">Retry</button>
                 </div>
-                
+
                 <div class="version-list-empty" id="versionListEmpty" style="display: none;">
-                    <div class="empty-icon">📄</div>
+                    <div class="empty-icon"><img src="/view/applets/shared/assets/file.svg" width="32" height="32" alt=""></div>
                     <div class="empty-message">No versions found</div>
                     <div class="empty-subtitle">Versions will be created automatically when you save changes to this file.</div>
                 </div>
-                
+
                 <div class="version-list" id="versionList">
                     <!-- Version items will be dynamically added here -->
                 </div>
             </div>
-            
+
             <div class="version-preview-container">
                 <div class="version-preview-header">
                     <h3>Preview</h3>
@@ -51,32 +51,32 @@
                         <button class="preview-btn" id="fullBtn" title="Show full content">Full</button>
                     </div>
                 </div>
-                
+
                 <div class="version-preview-loading" id="versionPreviewLoading" style="display: none;">
                     <div class="loading-spinner"></div>
                     <span>Loading preview...</span>
                 </div>
-                
+
                 <div class="version-preview-empty" id="versionPreviewEmpty">
-                    <div class="empty-icon">👁️</div>
+                    <div class="empty-icon"><img src="/view/applets/shared/assets/eye.svg" width="32" height="32" alt=""></div>
                     <div class="empty-message">Select a version to preview</div>
                 </div>
-                
+
                 <div class="version-preview-content" id="versionPreviewContent" style="display: none;">
                     <pre class="preview-code" id="previewCode"></pre>
                 </div>
-                
+
                 <div class="version-preview-error" id="versionPreviewError" style="display: none;">
                     <div class="error-icon">⚠️</div>
                     <div class="error-message" id="previewErrorMessage"></div>
                 </div>
             </div>
         </div>
-        
+
         <div class="modal-footer">
             <div class="footer-info">
                 <span class="selected-version-info" id="selectedVersionInfo" style="display: none;">
-                    Selected: <span id="selectedVersionDate"></span> 
+                    Selected: <span id="selectedVersionDate"></span>
                     (<span id="selectedVersionSize"></span>)
                 </span>
             </div>
@@ -102,7 +102,7 @@
             </div>
         </div>
         <div class="version-actions">
-            <button class="version-preview-btn" title="Preview this version">👁️</button>
+            <button class="version-preview-btn" title="Preview this version"><img src="/view/applets/shared/assets/eye.svg" width="14" height="14" alt=""></button>
             <button class="version-rollback-btn" title="Rollback to this version">↶</button>
         </div>
     </div>

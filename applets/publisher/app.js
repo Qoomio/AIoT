@@ -869,6 +869,7 @@ async function saveGitHubConfig(token, username = '') {
  * Load GitHub configuration from local file
  */
 async function getGitHubToken() {
+  if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   return getGitHubTokenRecord(CONFIG_FILE_PATH);
 }
 

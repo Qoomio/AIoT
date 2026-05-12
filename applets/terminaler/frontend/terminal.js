@@ -1,4 +1,4 @@
-import { inject as injectNavigater } from '/view/applets/navigater/frontend/navigater.js';
+import { inject as injectNavigator } from '/view/applets/navigator/frontend/navigator.js';
 
 // Terminal state
 let terminal = null;
@@ -156,6 +156,7 @@ function initializeTerminal() {
 
         if (isInIframe()) {
             document.querySelector('.header').style.display = 'none';
+            document.querySelector('.terminal-container').style.height = '100vh';
         }
         
     } catch (error) {
@@ -370,4 +371,4 @@ async function resetTerminalSession() {
 }
 
 initializeTerminal();
-injectNavigater('terminaler');
+injectNavigator('terminaler');

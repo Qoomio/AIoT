@@ -25,8 +25,8 @@ body > header {
 body > main {
     display: grid;
     width: 100%;
-    height: calc(100vh - 38px);
     flex: 1;
+    min-height: 0;
     grid-template-areas: 
         "controls controls controls controls controls controls controls" 
         "explorer left-resize editors right-resize widgets-preview chat-resize widgets-chat";

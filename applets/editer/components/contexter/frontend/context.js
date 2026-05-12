@@ -7,6 +7,25 @@
 'use strict';
 import qoomEvent from "../../../utils/qoomEvent.js"
 
+const ICONS_BASE = '/view/applets/shared/assets';
+function _fi(name) {
+    return `<img src="${ICONS_BASE}/${name}.svg" width="14" height="14" alt="">`;
+}
+const FI = {
+    file:     _fi('file'),
+    folder:   _fi('folder'),
+    trash:    _fi('trash'),
+    download: _fi('download'),
+    link:     _fi('link'),
+    eye:      _fi('eye'),
+    edit:     _fi('edit'),
+    copy:     _fi('copy'),
+    terminal: _fi('terminal'),
+    upload:   _fi('upload'),
+    zap:      _fi('zap'),
+    x:        _fi('x'),
+};
+
 let state = null;
 
 function showMessage(message, type = 'info') {
@@ -221,7 +240,7 @@ async function closeTab(paneId, tabId) {
 function showTabContextMenu(event, paneId, tabId, filePath) {
     const menuItems = [
         {
-            icon: '📄',
+            icon: FI.file,
             text: 'Close All Other Tabs',
             handler: () => {
                 removeContextMenu();
@@ -230,15 +249,15 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
         },
         { type: 'separator' },
         {
-            icon: '📄',
+            icon: FI.file,
             text: 'Copy Relative Path',
             handler: () => {
                 removeContextMenu();
                 copyRelativePath(filePath)
-            } 
+            }
         },
         {
-            icon: '🔗',
+            icon: FI.link,
             text: 'Copy Absolute Path',
             handler: () => {
                 removeContextMenu();
@@ -247,7 +266,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
         },
         { type: 'separator' },
         {
-            icon: '✖️',
+            icon: FI.x,
             text: 'Close Tab',
             handler: () => {
                 removeContextMenu();
@@ -255,7 +274,7 @@ function showTabContextMenu(event, paneId, tabId, filePath) {
             }
         },
         {
-            icon: '👁️',
+            icon: FI.eye,
             text: 'View File',
             handler: () => {
                 removeContextMenu();
@@ -285,7 +304,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
     if (selectionCount > 1) {
         menuItems = [
             {
-                icon: '💾',
+                icon: FI.download,
                 text: `Download ${selectionCount} Items`,
                 handler: () => {
                     removeContextMenu();
@@ -293,7 +312,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                 }
             },
             {
-                icon: '🗑️',
+                icon: FI.trash,
                 text: `Delete ${selectionCount} Items`,
                 className: 'delete-item',
                 handler: () => {
@@ -305,7 +324,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
     } else {
         menuItems = [
             {
-                icon: '✏️',
+                icon: FI.edit,
                 text: `Rename ${itemType}`,
                 handler: () => {
                     removeContextMenu();
@@ -317,7 +336,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                 }
             },
             {
-                icon: '📋',
+                icon: FI.copy,
                 text: `Duplicate ${itemType}`,
                 handler: () => {
                     removeContextMenu();
@@ -330,7 +349,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
             },
             { type: 'separator' },
             {
-                icon: '💻',
+                icon: FI.terminal,
                 text: 'Open in Terminal',
                 handler: async () => {
                     removeContextMenu();
@@ -340,7 +359,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
             },
             { type: 'separator' },
             {
-                icon: '📄',
+                icon: FI.file,
                 text: 'Copy Relative Path',
                 handler: () => {
                     removeContextMenu();
@@ -348,7 +367,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                 }
             },
             {
-                icon: '🔗',
+                icon: FI.link,
                 text: 'Copy Absolute Path',
                 handler: () => {
                     removeContextMenu();
@@ -361,7 +380,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
             menuItems.push(
                 { type: 'separator' },
                 {
-                    icon: '📤',
+                    icon: FI.upload,
                     text: 'Upload Files',
                     handler: () => {
                         removeContextMenu();
@@ -369,7 +388,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                     }
                 },
                 {
-                    icon: '📂',
+                    icon: FI.folder,
                     text: 'Upload Folder',
                     handler: () => {
                         removeContextMenu();
@@ -378,7 +397,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                 },
                 { type: 'separator' },
                 {
-                    icon: '📄',
+                    icon: FI.file,
                     text: 'New File',
                     handler: () => {
                         removeContextMenu();
@@ -386,7 +405,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
                     }
                 },
                 {
-                    icon: '📁',
+                    icon: FI.folder,
                     text: 'New Folder',
                     handler: () => {
                         removeContextMenu();
@@ -398,7 +417,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
             menuItems.push(
                 { type: 'separator' },
                 {
-                    icon: '👁️',
+                    icon: FI.eye,
                     text: 'View File',
                     handler: () => {
                         removeContextMenu();
@@ -411,7 +430,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
         menuItems.push(
             { type: 'separator' },
             {
-                icon: '💾',
+                icon: FI.download,
                 text: `Download ${itemType}`,
                 handler: () => {
                     removeContextMenu();
@@ -424,7 +443,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
             },
             { type: 'separator' },
             {
-                icon: '🗑️',
+                icon: FI.trash,
                 text: `Delete ${itemType}`,
                 className: 'delete-item',
                 handler: () => {
@@ -442,7 +461,7 @@ function showExplorerContextMenu(event, path, isDirectory, selection) {
     menuItems.push(
         { type: 'separator' },
         {
-            icon: '🚀',
+            icon: FI.zap,
             text: 'Publish',
             handler: () => {
                 removeContextMenu();

@@ -1,9 +1,86 @@
 .editors-container {
 	width: 100%;
 	height: 100%;
+	flex: 1;
+	min-height: 0;
 	display: grid;
 	background-color: #1e1e1e;
 	overflow: hidden;
+}
+
+/* Terminal panel embedded below the monaco editor */
+.editor-terminal-panel {
+	height: 220px;
+	min-height: 40px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	border-top: 1px solid #3e3e42;
+	background-color: #1e1e1e;
+}
+
+.editor-terminal-panel.collapsed {
+	height: 28px;
+	min-height: 28px;
+}
+
+.editor-terminal-panel.collapsed .editor-terminal-iframe {
+	display: none;
+}
+
+.editor-terminal-resize-handle {
+	height: 4px;
+	background-color: #3e3e42;
+	cursor: ns-resize;
+	flex-shrink: 0;
+	transition: background-color 0.15s ease;
+}
+
+.editor-terminal-resize-handle:hover {
+	background-color: #007acc;
+}
+
+.editor-terminal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 28px;
+	padding: 0 10px;
+	background-color: #252526;
+	border-bottom: 1px solid #3e3e42;
+	flex-shrink: 0;
+	font-size: 12px;
+	color: #ccc;
+	user-select: none;
+}
+
+.editor-terminal-title {
+	font-weight: 500;
+	letter-spacing: 0.03em;
+}
+
+.editor-terminal-toggle {
+	background: none;
+	border: none;
+	color: #ccc;
+	cursor: pointer;
+	font-size: 14px;
+	padding: 0 4px;
+	line-height: 1;
+	opacity: 0.7;
+	transition: opacity 0.15s ease;
+}
+
+.editor-terminal-toggle:hover {
+	opacity: 1;
+}
+
+.editor-terminal-iframe {
+	flex: 1;
+	border: none;
+	width: 100%;
+	min-height: 0;
+	display: block;
 }
 .editors-container[data-layout  =  "single"] {
 	grid-template-columns: 1fr;

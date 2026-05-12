@@ -972,6 +972,52 @@ async function injectHTML() {
 	}
 }
 
+function setupTerminalPanel() {
+	const panel = document.getElementById('editor-terminal-panel');
+	const resizeHandle = document.getElementById('editor-terminal-resize');
+	const toggleBtn = document.getElementById('editor-terminal-toggle');
+	if (!panel || !resizeHandle || !toggleBtn) return;
+
+	// Toggle collapse/expand
+	toggleBtn.addEventListener('click', () => {
+		const collapsed = panel.classList.toggle('collapsed');
+		toggleBtn.textContent = collapsed ? '▲' : '✕';
+		toggleBtn.title = collapsed ? 'Expand terminal' : 'Close terminal';
+	});
+
+	// Drag-to-resize: dragging the handle adjusts panel height
+	let dragStartY = 0;
+	let dragStartHeight = 0;
+
+	resizeHandle.addEventListener('mousedown', (e) => {
+		dragStartY = e.clientY;
+		dragStartHeight = panel.offsetHeight;
+		document.body.style.cursor = 'ns-resize';
+		document.body.style.userSelect = 'none';
+
+		function onMouseMove(e) {
+			const delta = dragStartY - e.clientY; // dragging up increases height
+			const newHeight = Math.max(40, dragStartHeight + delta);
+			panel.style.height = newHeight + 'px';
+			if (panel.classList.contains('collapsed') && newHeight > 40) {
+				panel.classList.remove('collapsed');
+				toggleBtn.textContent = '✕';
+				toggleBtn.title = 'Close terminal';
+			}
+		}
+
+		function onMouseUp() {
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		}
+
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	});
+}
+
 async function initialize(_state) {
 	state = _state;
 	editorLayout = state.layout; // editorLayout 참조 설정
@@ -984,6 +1030,7 @@ async function initialize(_state) {
 
 	initializeFileSync();
 	setupAutosave();
+	setupTerminalPanel();
     console.log('Editors initialized');
 }
 

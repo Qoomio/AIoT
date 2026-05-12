@@ -15,7 +15,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        '/view/applets/navigater/frontend/navigater.js',
+        '/view/applets/navigator/frontend/navigator.js',
         '/view/applets/shared/file-types-config.js',
         '/view/applets/shared/marked.esm.js'
       ],

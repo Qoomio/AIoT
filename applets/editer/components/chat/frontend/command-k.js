@@ -96,7 +96,7 @@ class CommandKAssistant {
                 <div class="command-k-content">
                     <div class="command-k-input-section">
                         <div class="command-k-context-info" id="commandKContextInfo">
-                            <span>📄</span>
+                            <span><img src="/view/applets/shared/assets/file.svg" width="14" height="14" alt=""></span>
                             <span id="commandKContextText">No file selected</span>
                         </div>
                         <textarea class="command-k-input" id="commandKInput" 

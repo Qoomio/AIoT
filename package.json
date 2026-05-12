@@ -1,6 +1,6 @@
 {
-  "name": "qoom-aiot-editor",
-  "description": "Qoom AIOT Editor",
+  "name": "qoom-base-AIoT",
+  "description": "Qoom AIoT Editor",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -21,14 +21,13 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "archiver": "^7.0.1",
+    "better-sqlite3": "^11.0.0",
     "chokidar": "^4.0.3",
     "dotenv": "^16.3.1",
     "form-data": "^4.0.4",
-    "monaco-editor": "^0.52.2",
-    "mongoose": "^8.10.0",
     "node-pty": "^1.0.0",
     "stripe": "^14.21.0",
     "ws": "^8.18.3"
   },
-  "version": "1.45.0"
+  "version": "1.0.0"
 }
